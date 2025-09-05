@@ -1,0 +1,51 @@
+/* أنماط قسم الإحالة */
+.referral-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.referral-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #343a40;
+    font-size: 18px;
+}
+
+.referral-link-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+#referral-link {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #fff;
+    direction: ltr;
+    text-align: left;
+}
+
+.btn-small {
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-small:hover {
+    background-color: #0056b3;
+}
+
+.referral-note {
+    font-size: 14px;
+    color: #6c757d;
+    margin: 0;
+  }
