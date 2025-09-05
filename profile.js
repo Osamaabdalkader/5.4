@@ -1,7 +1,7 @@
 // استيراد دوال Firebase
 import { 
   auth, database, signOut,
-  ref, onValue,
+  ref, onValue, get,
   onAuthStateChanged
 } from './firebase.js';
 
@@ -52,7 +52,7 @@ function checkAuthState() {
 // تحميل بيانات المستخدم
 function loadUserData(userId) {
     const userRef = ref(database, 'users/' + userId);
-    onValue(userRef, (snapshot) => {
+    onValue(userRef, async (snapshot) => {
         if (snapshot.exists()) {
             const userData = snapshot.val();
             
@@ -61,6 +61,8 @@ function loadUserData(userId) {
             userEmail.textContent = userData.email || 'غير محدد';
             userPhone.textContent = userData.phone || 'غير محدد';
             userAddress.textContent = userData.address || 'غير محدد';
+            
+            // عرض عدد الإحالات
             userReferrals.textContent = userData.referralsCount || 0;
             
             // إنشاء وعرض رابط الإحالة
@@ -74,6 +76,9 @@ function loadUserData(userId) {
             if (userData.isAdmin) {
                 adminIcon.style.display = 'flex';
             }
+            
+            // تحميل قائمة المستخدمين الذين تمت إحالتهم (اختياري)
+            await loadReferralsList(userId);
         } else {
             // بيانات المستخدم غير موجودة
             userName.textContent = 'بيانات غير متاحة';
@@ -83,6 +88,24 @@ function loadUserData(userId) {
             userReferrals.textContent = '0';
         }
     });
+}
+
+// تحميل قائمة المستخدمين الذين تمت إحالتهم (وظيفة إضافية)
+async function loadReferralsList(userId) {
+    try {
+        const referralsRef = ref(database, 'userReferrals/' + userId);
+        const snapshot = await get(referralsRef);
+        
+        if (snapshot.exists()) {
+            const referrals = snapshot.val();
+            const referralsCount = Object.keys(referrals).length;
+            console.log("عدد المستخدمين الذين تمت إحالتهم: ", referralsCount);
+            
+            // يمكنك عرض قائمة بالمستخدمين هنا إذا أردت
+        }
+    } catch (error) {
+        console.error("خطأ في تحميل قائمة الإحالات: ", error);
+    }
 }
 
 // تسجيل الخروج
