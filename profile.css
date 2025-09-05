@@ -371,3 +371,46 @@ footer {
 }
 
 
+  
+.referral-stats {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+}
+
+.referral-count {
+    font-size: 24px;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.referral-label {
+    font-size: 16px;
+    color: #6c757d;
+}
+
+.referral-list {
+    margin-top: 20px;
+}
+
+.referral-item {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.referral-name {
+    font-weight: bold;
+}
+
+.referral-date {
+    color: #6c757d;
+    font-size: 14px;
+} 
+
