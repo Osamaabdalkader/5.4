@@ -40,47 +40,20 @@
                     <i class="fas fa-map-marker-alt"></i>
                     <span id="user-address">جاري التحميل...</span>
                 </div>
-            </div>
-            
-            <!-- قسم الإحالة -->
-            <div class="referral-section">
-                <h3>نظام الإحالة</h3>
-                
-                <div class="referral-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-user-plus"></i>
-                        <span>عدد المُحالين: <strong id="referral-count">0</strong></span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-star"></i>
-                        <span>النقاط: <strong id="user-points">0</strong></span>
-                    </div>
+                <!-- قسم الإحالات -->
+                <div class="user-detail">
+                    <i class="fas fa-user-plus"></i>
+                    <span id="user-referrals">0</span> مستخدم انضم عبر رابطك
                 </div>
-                
-                <div class="referral-info">
-                    <div class="referral-item">
-                        <label>رمز الإحالة الخاص بك:</label>
-                        <span id="referral-code" class="referral-code">جاري التحميل...</span>
+                <div class="user-detail referral-section">
+                    <h3>رابط الإحالة الخاص بك</h3>
+                    <div class="referral-link-container">
+                        <input type="text" id="referral-link" readonly>
+                        <button id="copy-referral-btn" class="btn-small">
+                            <i class="fas fa-copy"></i> نسخ
+                        </button>
                     </div>
-                    
-                    <div class="referral-item">
-                        <label>رابط الإحالة:</label>
-                        <div class="referral-link-container">
-                            <input type="text" id="referral-link" readonly class="referral-link-input">
-                            <button id="copy-referral-btn" class="btn-outline">
-                                <i class="fas fa-copy"></i> نسخ
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="referral-benefits">
-                    <h4>مزايا نظام الإحالة:</h4>
-                    <ul>
-                        <li>✅ احصل على 100 نقطة لكل صديق يسجل باستخدام رابطك</li>
-                        <li>✅ النقاط قابلة للاستبدال بمزايا حصرية</li>
-                        <li>✅ تتبع عدد أصدقائك الذين انضموا عبرك</li>
-                    </ul>
+                    <p class="referral-note">شارك هذا الرابط مع أصدقائك لتحصل على مكافآت عند انضمامهم</p>
                 </div>
             </div>
             
@@ -123,4 +96,4 @@
     <!-- Firebase SDK -->
     <script type="module" src="profile.js"></script>
 </body>
-                    </html>
+    </html>
