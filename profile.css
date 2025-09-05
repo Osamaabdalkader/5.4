@@ -243,3 +243,131 @@ footer {
     font-size: 1rem;
   }
 }
+
+/* إضافة هذه التنسيقات لنظام الإحالة */
+.referral-section {
+    background: var(--light-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin: 2rem 0;
+    border: 1px solid var(--gray-200);
+}
+
+.referral-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.referral-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-item {
+    background: white;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-item i {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.referral-info {
+    margin-bottom: 1.5rem;
+}
+
+.referral-item {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: var(--border-radius);
+}
+
+.referral-item label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.referral-code {
+    background: var(--gray-100);
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius-sm);
+    font-family: monospace;
+    font-weight: bold;
+    color: var(--primary-color);
+    display: inline-block;
+}
+
+.referral-link-container {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.referral-link-input {
+    flex: 1;
+    background: var(--gray-100);
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--gray-300);
+    font-family: inherit;
+}
+
+.referral-benefits {
+    background: white;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--success-color);
+}
+
+.referral-benefits h4 {
+    color: var(--success-color);
+    margin-bottom: 0.5rem;
+}
+
+.referral-benefits ul {
+    list-style: none;
+    padding: 0;
+}
+
+.referral-benefits li {
+    padding: 0.25rem 0;
+    color: var(--gray-600);
+}
+
+.btn-outline {
+    background: white;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-outline:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* التصميم المتجاوب */
+@media (max-width: 768px) {
+    .referral-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .referral-link-container {
+        flex-direction: column;
+    }
+}
+
+
