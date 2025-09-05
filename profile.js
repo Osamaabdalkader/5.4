@@ -1,4 +1,4 @@
-// profile.js - مع نظام الإحالة
+// استيراد دوال Firebase
 import { 
   auth, database, signOut,
   ref, onValue,
@@ -10,18 +10,29 @@ const userName = document.getElementById('user-name');
 const userEmail = document.getElementById('user-email');
 const userPhone = document.getElementById('user-phone');
 const userAddress = document.getElementById('user-address');
+const userReferrals = document.getElementById('user-referrals');
+const referralLink = document.getElementById('referral-link');
+const copyReferralBtn = document.getElementById('copy-referral-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const adminIcon = document.getElementById('admin-icon');
-const referralCodeElement = document.getElementById('referral-code');
-const referralLinkElement = document.getElementById('referral-link');
-const referralCountElement = document.getElementById('referral-count');
-const userPointsElement = document.getElementById('user-points');
-const copyReferralBtn = document.getElementById('copy-referral-btn');
 
 // تحميل بيانات المستخدم عند بدء التحميل
 document.addEventListener('DOMContentLoaded', () => {
     checkAuthState();
-    setupEventListeners();
+});
+
+// التعامل مع نسخ رابط الإحالة
+copyReferralBtn.addEventListener('click', () => {
+    referralLink.select();
+    document.execCommand('copy');
+    
+    // تغيير نص الزر مؤقتاً للإشارة إلى نجاح النسخ
+    const originalText = copyReferralBtn.innerHTML;
+    copyReferralBtn.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
+    
+    setTimeout(() => {
+        copyReferralBtn.innerHTML = originalText;
+    }, 2000);
 });
 
 // التحقق من حالة المصادقة
@@ -38,13 +49,6 @@ function checkAuthState() {
     });
 }
 
-// إعداد مستمعي الأحداث
-function setupEventListeners() {
-    if (copyReferralBtn) {
-        copyReferralBtn.addEventListener('click', copyReferralLink);
-    }
-}
-
 // تحميل بيانات المستخدم
 function loadUserData(userId) {
     const userRef = ref(database, 'users/' + userId);
@@ -57,23 +61,13 @@ function loadUserData(userId) {
             userEmail.textContent = userData.email || 'غير محدد';
             userPhone.textContent = userData.phone || 'غير محدد';
             userAddress.textContent = userData.address || 'غير محدد';
+            userReferrals.textContent = userData.referralsCount || 0;
             
-            // عرض معلومات الإحالة
-            if (referralCodeElement && userData.referralCode) {
-                referralCodeElement.textContent = userData.referralCode;
-            }
-            
-            if (referralLinkElement && userData.referralCode) {
-                const referralLink = `${window.location.origin}${window.location.pathname.replace('profile.html', 'auth.html')}?ref=${userData.referralCode}`;
-                referralLinkElement.value = referralLink;
-            }
-            
-            if (referralCountElement) {
-                referralCountElement.textContent = userData.referralCount || 0;
-            }
-            
-            if (userPointsElement) {
-                userPointsElement.textContent = userData.points || 0;
+            // إنشاء وعرض رابط الإحالة
+            if (userData.referralCode) {
+                const currentUrl = window.location.origin + window.location.pathname;
+                const baseUrl = currentUrl.replace('profile.html', 'auth.html');
+                referralLink.value = `${baseUrl}?ref=${userData.referralCode}`;
             }
             
             // إظهار أيقونة الإدارة إذا كان المستخدم مشرفاً
@@ -86,31 +80,18 @@ function loadUserData(userId) {
             userEmail.textContent = 'بيانات غير متاحة';
             userPhone.textContent = 'بيانات غير متاحة';
             userAddress.textContent = 'بيانات غير متاحة';
+            userReferrals.textContent = '0';
         }
     });
 }
 
-// نسخ رابط الإحالة
-function copyReferralLink() {
-    const referralLink = document.getElementById('referral-link').value;
-    
-    navigator.clipboard.writeText(referralLink).then(() => {
-        alert('تم نسخ رابط الإحالة بنجاح!');
-    }).catch(err => {
-        console.error('Failed to copy: ', err);
-        alert('فشل في نسخ الرابط. يرجى المحاولة مرة أخرى.');
-    });
-}
-
 // تسجيل الخروج
-if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-        signOut(auth).then(() => {
-            // توجيه إلى الصفحة الرئيسية بعد تسجيل الخروج
-            window.location.href = 'index.html';
-        }).catch((error) => {
-            console.error('Error signing out:', error);
-            alert('حدث خطأ أثناء تسجيل الخروج. يرجى المحاولة مرة أخرى.');
-        });
+logoutBtn.addEventListener('click', () => {
+    signOut(auth).then(() => {
+        // توجيه إلى الصفحة الرئيسية بعد تسجيل الخروج
+        window.location.href = 'index.html';
+    }).catch((error) => {
+        console.error('Error signing out:', error);
+        alert('حدث خطأ أثناء تسجيل الخروج. يرجى المحاولة مرة أخرى.');
     });
-              }
+});
