@@ -138,23 +138,30 @@ signupBtn.addEventListener('click', async (e) => {
         
         // إذا كان المستخدم قد انضم عن طريق رابط إحالة، زيادة عداد الإحالات للمستخدم المُحيل
         if (referredBy) {
-            const referrerRef = ref(database, 'users/' + referredBy);
-            const referrerSnapshot = await get(referrerRef);
-            
-            if (referrerSnapshot.exists()) {
-                const referrerData = referrerSnapshot.val();
-                const updatedCount = (referrerData.referralsCount || 0) + 1;
+            try {
+                const referrerRef = ref(database, 'users/' + referredBy);
+                const referrerSnapshot = await get(referrerRef);
                 
-                await set(ref(database, 'users/' + referredBy + '/referralsCount'), updatedCount);
-                
-                // تسجيل تفاصيل الإحالة
-                const referralData = {
-                    referredUserId: user.uid,
-                    referredUserName: name,
-                    timestamp: Date.now()
-                };
-                
-                await set(ref(database, 'referrals/' + referredBy + '/' + user.uid), referralData);
+                if (referrerSnapshot.exists()) {
+                    const referrerData = referrerSnapshot.val();
+                    const updatedCount = (referrerData.referralsCount || 0) + 1;
+                    
+                    // استخدام set لتحديث الحقل فقط
+                    await set(ref(database, 'users/' + referredBy + '/referralsCount'), updatedCount);
+                    
+                    // تسجيل تفاصيل الإحالة في مسار منفصل
+                    const referralData = {
+                        referredUserId: user.uid,
+                        referredUserName: name,
+                        timestamp: Date.now()
+                    };
+                    
+                    await set(ref(database, 'userReferrals/' + referredBy + '/' + user.uid), referralData);
+                    
+                    console.log("تم تحديث عداد الإحالات للمستخدم: ", referredBy);
+                }
+            } catch (error) {
+                console.error("خطأ في تحديث عداد الإحالات: ", error);
             }
         }
         
@@ -195,4 +202,20 @@ function getAuthErrorMessage(code) {
         case 'auth/weak-password': return 'كلمة المرور ضعيفة (يجب أن تحتوي على 6 أحرف على الأقل)';
         default: return 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى';
     }
-                          }
+}
+
+// معالجة رابط الإحالة إذا كان موجودًا في URL
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    
+    if (refCode) {
+        document.getElementById('referral-code').value = refCode;
+        
+        // إظهار نموذج إنشاء الحساب تلقائيًا إذا كان هناك رابط إحالة
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('[data-tab="signup"]').classList.add('active');
+        loginForm.classList.add('hidden');
+        signupForm.classList.remove('hidden');
+    }
+});
