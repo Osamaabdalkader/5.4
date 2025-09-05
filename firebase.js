@@ -21,7 +21,8 @@ import {
   remove, 
   query, 
   orderByChild, 
-  equalTo 
+  equalTo,
+  get // إضافة دالة get هنا
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 import { 
   getStorage, 
@@ -71,6 +72,6 @@ try {
 export { 
   app, analytics, auth, database, storage,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut,
-  ref, set, push, onValue, serverTimestamp, update, remove, query, orderByChild, equalTo,
+  ref, set, push, onValue, serverTimestamp, update, remove, query, orderByChild, equalTo, get,
   storageRef, uploadBytesResumable, getDownloadURL
 };
