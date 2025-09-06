@@ -1,6 +1,6 @@
 // استيراد دوال Firebase
 import { 
-  auth, database, ref, set, get, runTransaction,
+  auth, database, ref, set, get,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged 
 } from './firebase.js';
 
@@ -65,6 +65,27 @@ async function findUserByReferralCode(referralCode) {
     } catch (error) {
         console.error('Error checking referral code:', error);
         return null;
+    }
+}
+
+// زيادة عداد الإحالات بطريقة آمنة
+async function incrementReferralCount(userId) {
+    try {
+        const userRef = ref(database, 'users/' + userId);
+        const snapshot = await get(userRef);
+        
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            const currentCount = userData.referralsCount || 0;
+            const newCount = currentCount + 1;
+            
+            await set(ref(database, 'users/' + userId + '/referralsCount'), newCount);
+            return newCount;
+        }
+        return 0;
+    } catch (error) {
+        console.error("Error incrementing referral count:", error);
+        throw error;
     }
 }
 
@@ -151,13 +172,8 @@ signupBtn.addEventListener('click', async (e) => {
             try {
                 console.log("محاولة زيادة عداد الإحالات للمستخدم المحيل: ", referrerInfo.userId);
                 
-                // استخدام معاملة (transaction) لضمان زيادة العداد بشكل صحيح
-                const referralsCountRef = ref(database, 'users/' + referrerInfo.userId + '/referralsCount');
-                await runTransaction(referralsCountRef, (currentCount) => {
-                    // إذا كان العداد غير موجود، نبدأ من الصفر
-                    return (currentCount || 0) + 1;
-                });
-                
+                // زيادة عداد الإحالات
+                await incrementReferralCount(referrerInfo.userId);
                 console.log("تم زيادة عداد الإحالات بنجاح");
                 
                 // تسجيل تفاصيل الإحالة في مسار منفصل
