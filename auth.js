@@ -119,10 +119,12 @@ signupBtn.addEventListener('click', async (e) => {
                 showAuthMessage('رمز الإحالة غير صحيح', 'error');
                 return;
             }
+            console.log("تم العثور على المستخدم المحيل:", referrerInfo.userId);
         }
         
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        console.log("تم إنشاء مستخدم جديد:", user.uid);
         
         // إنشاء رمز إحالة للمستخدم الجديد
         const referralCode = generateReferralCode();
@@ -137,15 +139,15 @@ signupBtn.addEventListener('click', async (e) => {
             isAdmin: false,
             referralCode: referralCode,
             referredBy: referrerInfo ? referrerInfo.userId : null
-            // تمت إزالة referralsCount لأننا سنعتمد على المجموعة
         };
         
         await set(ref(database, 'users/' + user.uid), userData);
+        console.log("تم حفظ بيانات المستخدم الجديد");
         
-        // إذا كان المستخدم قد انضم عن طريق رابط الإحالة، إضافته إلى مجموعة الإحالات
+        // إذا كان المستخدم قد انضم عن طريق رابط الإحالة
         if (referrerInfo) {
             try {
-                // تسجيل تفاصيل الإحالة في مجموعة منفصلة
+                // تسجيل تفاصيل الإحالة في مسار منفصل
                 const referralData = {
                     referredUserId: user.uid,
                     referredUserName: name,
@@ -154,12 +156,12 @@ signupBtn.addEventListener('click', async (e) => {
                     referralCodeUsed: referralCodeInput
                 };
                 
-                // إضافة المستخدم إلى مجموعة الإحالات تحت المستخدم المحيل
-                await set(ref(database, 'userReferrals/' + referrerInfo.userId + '/' + user.uid), referralData);
+                // إضافة الإحالة إلى المسار المنفصل
+                await set(ref(database, 'referrals/' + referrerInfo.userId + '/' + user.uid), referralData);
+                console.log("تم تسجيل الإحالة بنجاح للمستخدم المحيل:", referrerInfo.userId);
                 
-                console.log("تم تسجيل الإحالة بنجاح في المجموعة");
             } catch (error) {
-                console.error("خطأ في تسجيل الإحالة: ", error);
+                console.error("خطأ في تسجيل الإحالة:", error);
             }
         }
         
@@ -169,6 +171,7 @@ signupBtn.addEventListener('click', async (e) => {
             window.location.href = 'index.html';
         }, 1000);
     } catch (error) {
+        console.error("خطأ عام في إنشاء الحساب:", error);
         showAuthMessage(getAuthErrorMessage(error.code), 'error');
     }
 });
