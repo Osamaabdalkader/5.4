@@ -58,7 +58,7 @@ function loadUserData(userId) {
             userPhone.textContent = userData.phone || 'غير محدد';
             userAddress.textContent = userData.address || 'غير محدد';
             
-            // تحميل عدد الإحالات من المسار المنفصل
+            // تحميل عدد الإحالات من المجموعة الكاملة
             await loadReferralsCount(userId);
             
             if (userData.referralCode) {
@@ -80,20 +80,33 @@ function loadUserData(userId) {
     });
 }
 
-// تحميل عدد الإحالات من المسار المنفصل
+// تحميل عدد الإحالات من المجموعة الكاملة
 async function loadReferralsCount(userId) {
     try {
-        const referralsRef = ref(database, 'referrals/' + userId);
-        const snapshot = await get(referralsRef);
+        // المحاولة الأولى: الحصول على العدد المخزن مسبقاً
+        const countRef = ref(database, 'users/' + userId + '/referralsCount');
+        const countSnapshot = await get(countRef);
         
-        let referralsCount = 0;
-        if (snapshot.exists()) {
-            const referrals = snapshot.val();
-            referralsCount = Object.keys(referrals).length;
+        if (countSnapshot.exists()) {
+            userReferrals.textContent = countSnapshot.val();
+            console.log("تم تحميل عدد الإحالات من التخزين السريع:", countSnapshot.val());
+        } else {
+            // المحاولة الثانية: حساب العدد من المجموعة
+            const referralsRef = ref(database, 'referralGroups/' + userId + '/members');
+            const snapshot = await get(referralsRef);
+            
+            let referralsCount = 0;
+            if (snapshot.exists()) {
+                const referrals = snapshot.val();
+                referralsCount = Object.keys(referrals).length;
+                
+                // تخزين العدد للوصول السريع مستقبلاً
+                await set(ref(database, 'users/' + userId + '/referralsCount'), referralsCount);
+            }
+            
+            userReferrals.textContent = referralsCount;
+            console.log("تم حساب عدد الإحالات من المجموعة:", referralsCount);
         }
-        
-        userReferrals.textContent = referralsCount;
-        console.log("تم تحميل عدد الإحالات:", referralsCount);
         
     } catch (error) {
         console.error("خطأ في تحميل عدد الإحالات:", error);
