@@ -62,7 +62,7 @@ function loadUserData(userId) {
             userPhone.textContent = userData.phone || 'غير محدد';
             userAddress.textContent = userData.address || 'غير محدد';
             
-            // عرض عدد الإحالات
+            // عرض عدد الإحالات - نستخدم البيانات المباشرة من المستخدم
             userReferrals.textContent = userData.referralsCount || 0;
             
             // إنشاء وعرض رابط الإحالة
@@ -101,7 +101,13 @@ async function loadReferralsList(userId) {
             const referralsCount = Object.keys(referrals).length;
             console.log("عدد المستخدمين الذين تمت إحالتهم: ", referralsCount);
             
-            // يمكنك عرض قائمة بالمستخدمين هنا إذا أردت
+            // تحديث العدد إذا كان مختلفاً عن القيمة المخزنة
+            if (referralsCount !== (parseInt(userReferrals.textContent) || 0)) {
+                userReferrals.textContent = referralsCount;
+                
+                // تحديث القيمة في قاعدة البيانات للحفاظ على التزامن
+                await set(ref(database, 'users/' + userId + '/referralsCount'), referralsCount);
+            }
         }
     } catch (error) {
         console.error("خطأ في تحميل قائمة الإحالات: ", error);
