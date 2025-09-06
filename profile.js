@@ -1,7 +1,7 @@
 // استيراد دوال Firebase
 import { 
   auth, database, signOut,
-  ref, onValue,
+  ref, onValue, get,
   onAuthStateChanged
 } from './firebase.js';
 
@@ -39,6 +39,7 @@ function checkAuthState() {
 function loadUserData(userId) {
     const userRef = ref(database, 'users/' + userId);
     onValue(userRef, (snapshot) => {
+        console.log("بيانات المستخدم:", snapshot.val()); // لأغراض debugging
         if (snapshot.exists()) {
             const userData = snapshot.val();
             
@@ -54,7 +55,19 @@ function loadUserData(userId) {
             // إنشاء رابط الإحالة
             const currentUrl = window.location.origin + window.location.pathname;
             const baseUrl = currentUrl.replace('profile.html', 'auth.html');
-            referralLink.value = `${baseUrl}?ref=${userData.referralCode}`;
+            
+            // التأكد من وجود كود الإحالة
+            if (userData.referralCode) {
+                referralLink.value = `${baseUrl}?ref=${userData.referralCode}`;
+            } else {
+                // إذا لم يكن هناك كود إحالة، إنشاء واحد
+                const newReferralCode = generateReferralCode(userId);
+                referralLink.value = `${baseUrl}?ref=${newReferralCode}`;
+                
+                // حفظ الكود الجديد في قاعدة البيانات
+                set(ref(database, `users/${userId}/referralCode`), newReferralCode)
+                    .catch(error => console.error("Error saving referral code:", error));
+            }
             
             // إظهار أيقونة الإدارة إذا كان المستخدم مشرفاً
             if (userData.isAdmin) {
@@ -66,8 +79,47 @@ function loadUserData(userId) {
             userEmail.textContent = 'بيانات غير متاحة';
             userPhone.textContent = 'بيانات غير متاحة';
             userAddress.textContent = 'بيانات غير متاحة';
+            
+            // محاولة إنشاء بيانات أساسية للمستخدم
+            createBasicUserData(userId);
         }
+    }, (error) => {
+        console.error("Error loading user data:", error);
     });
+}
+
+// إنشاء كود إحالة فريد (نفس الدالة في auth.js)
+function generateReferralCode(uid) {
+    const timestamp = Date.now().toString(36);
+    const uidPart = uid.substring(0, 5);
+    return `REF_${timestamp}_${uidPart}`.toUpperCase();
+}
+
+// إنشاء بيانات أساسية للمستخدم إذا لم تكن موجودة
+async function createBasicUserData(userId) {
+    try {
+        const user = auth.currentUser;
+        if (!user) return;
+        
+        const userData = {
+            name: user.displayName || "مستخدم جديد",
+            email: user.email || "غير محدد",
+            phone: "غير محدد",
+            address: "غير محدد",
+            createdAt: Date.now(),
+            isAdmin: false,
+            referralCode: generateReferralCode(userId),
+            referralCount: 0
+        };
+        
+        await set(ref(database, 'users/' + userId), userData);
+        console.log("تم إنشاء بيانات المستخدم الأساسية");
+        
+        // إعادة تحميل البيانات
+        loadUserData(userId);
+    } catch (error) {
+        console.error("Error creating basic user data:", error);
+    }
 }
 
 // نسخ رابط الإحالة
