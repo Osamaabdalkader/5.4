@@ -32,14 +32,18 @@ authTabs.addEventListener('click', (e) => {
 });
 
 // إنشاء رمز إحالة فريد للمستخدم
-function generateReferralCode(userId) {
-    // استخدام أول 8 أحرف من المعرف مع طابع زمني
-    const timestamp = Date.now().toString(36);
-    return userId.substring(0, 8) + timestamp;
+function generateReferralCode() {
+    // إنشاء رمز عشوائي مكون من 10 أحرف
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 10; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
 }
 
-// التحقق من صحة رمز الإحالة
-async function isValidReferralCode(referralCode) {
+// البحث عن المستخدم باستخدام رمز الإحالة
+async function findUserByReferralCode(referralCode) {
     if (!referralCode) return null;
     
     try {
@@ -106,10 +110,10 @@ signupBtn.addEventListener('click', async (e) => {
     
     try {
         // التحقق من صحة رابط الإحالة إذا تم إدخاله
-        let referredBy = null;
+        let referredByUserId = null;
         if (referralCodeInput) {
-            referredBy = await isValidReferralCode(referralCodeInput);
-            if (!referredBy) {
+            referredByUserId = await findUserByReferralCode(referralCodeInput);
+            if (!referredByUserId) {
                 showAuthMessage('رمز الإحالة غير صحيح', 'error');
                 return;
             }
@@ -119,7 +123,7 @@ signupBtn.addEventListener('click', async (e) => {
         const user = userCredential.user;
         
         // إنشاء رمز إحالة للمستخدم الجديد
-        const referralCode = generateReferralCode(user.uid);
+        const referralCode = generateReferralCode();
         
         // حفظ بيانات المستخدم الإضافية في قاعدة البيانات
         const userData = {
@@ -130,24 +134,24 @@ signupBtn.addEventListener('click', async (e) => {
             createdAt: Date.now(),
             isAdmin: false,
             referralCode: referralCode,
-            referredBy: referredBy,
+            referredBy: referredByUserId, // حفظ معرف المستخدم الذي أحاله
             referralsCount: 0
         };
         
         await set(ref(database, 'users/' + user.uid), userData);
         
         // إذا كان المستخدم قد انضم عن طريق رابط إحالة، زيادة عداد الإحالات للمستخدم المُحيل
-        if (referredBy) {
+        if (referredByUserId) {
             try {
-                const referrerRef = ref(database, 'users/' + referredBy);
+                const referrerRef = ref(database, 'users/' + referredByUserId);
                 const referrerSnapshot = await get(referrerRef);
                 
                 if (referrerSnapshot.exists()) {
                     const referrerData = referrerSnapshot.val();
                     const updatedCount = (referrerData.referralsCount || 0) + 1;
                     
-                    // استخدام set لتحديث الحقل فقط
-                    await set(ref(database, 'users/' + referredBy + '/referralsCount'), updatedCount);
+                    // تحديث عداد الإحالات للمستخدم المُحيل
+                    await set(ref(database, 'users/' + referredByUserId + '/referralsCount'), updatedCount);
                     
                     // تسجيل تفاصيل الإحالة في مسار منفصل
                     const referralData = {
@@ -156,9 +160,9 @@ signupBtn.addEventListener('click', async (e) => {
                         timestamp: Date.now()
                     };
                     
-                    await set(ref(database, 'userReferrals/' + referredBy + '/' + user.uid), referralData);
+                    await set(ref(database, 'userReferrals/' + referredByUserId + '/' + user.uid), referralData);
                     
-                    console.log("تم تحديث عداد الإحالات للمستخدم: ", referredBy);
+                    console.log("تم تحديث عداد الإحالات للمستخدم: ", referredByUserId);
                 }
             } catch (error) {
                 console.error("خطأ في تحديث عداد الإحالات: ", error);
