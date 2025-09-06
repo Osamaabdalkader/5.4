@@ -40,20 +40,29 @@
                     <i class="fas fa-map-marker-alt"></i>
                     <span id="user-address">جاري التحميل...</span>
                 </div>
-                <!-- قسم الإحالات -->
-                <div class="user-detail">
-                    <i class="fas fa-user-plus"></i>
-                    <span id="user-referrals">0</span> مستخدم انضم عبر رابطك
-                </div>
-                <div class="user-detail referral-section">
-                    <h3>رابط الإحالة الخاص بك</h3>
-                    <div class="referral-link-container">
+            </div>
+            
+            <!-- قسم الإحالات -->
+            <div class="referral-section">
+                <h2>نظام الإحالة</h2>
+                <div class="referral-details">
+                    <div class="referral-detail">
+                        <i class="fas fa-users"></i>
+                        <span>عدد الأحالات: <span id="referral-count">0</span></span>
+                    </div>
+                    <div class="referral-detail">
+                        <i class="fas fa-link"></i>
+                        <span>رابط الإحالة الخاص بك:</span>
+                    </div>
+                    <div class="referral-link">
                         <input type="text" id="referral-link" readonly>
-                        <button id="copy-referral-btn" class="btn-small">
-                            <i class="fas fa-copy"></i> نسخ
+                        <button id="copy-referral" class="btn-small">
+                            <i class="fas fa-copy"></i>
                         </button>
                     </div>
-                    <p class="referral-note">شارك هذا الرابط مع أصدقائك لتحصل على مكافآت عند انضمامهم</p>
+                </div>
+                <div class="profile-actions">
+                    <a href="groups.html" class="btn">إدارة الفريق</a>
                 </div>
             </div>
             
@@ -96,4 +105,4 @@
     <!-- Firebase SDK -->
     <script type="module" src="profile.js"></script>
 </body>
-    </html>
+                </html>
