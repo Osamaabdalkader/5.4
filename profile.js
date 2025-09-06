@@ -58,8 +58,8 @@ function loadUserData(userId) {
             userPhone.textContent = userData.phone || 'غير محدد';
             userAddress.textContent = userData.address || 'غير محدد';
             
-            // تحميل عدد الإحالات من المجموعة
-            await loadReferralsCountFromGroup(userId);
+            // تحميل عدد الإحالات من المسار المنفصل
+            await loadReferralsCount(userId);
             
             if (userData.referralCode) {
                 const currentUrl = window.location.origin + window.location.pathname;
@@ -80,10 +80,10 @@ function loadUserData(userId) {
     });
 }
 
-// تحميل عدد الإحالات من مجموعة الإحالات
-async function loadReferralsCountFromGroup(userId) {
+// تحميل عدد الإحالات من المسار المنفصل
+async function loadReferralsCount(userId) {
     try {
-        const referralsRef = ref(database, 'userReferrals/' + userId);
+        const referralsRef = ref(database, 'referrals/' + userId);
         const snapshot = await get(referralsRef);
         
         let referralsCount = 0;
@@ -93,9 +93,10 @@ async function loadReferralsCountFromGroup(userId) {
         }
         
         userReferrals.textContent = referralsCount;
+        console.log("تم تحميل عدد الإحالات:", referralsCount);
         
     } catch (error) {
-        console.error("خطأ في تحميل عدد الإحالات من المجموعة: ", error);
+        console.error("خطأ في تحميل عدد الإحالات:", error);
         userReferrals.textContent = '0';
     }
 }
