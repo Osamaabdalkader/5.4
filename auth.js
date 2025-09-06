@@ -31,43 +31,6 @@ authTabs.addEventListener('click', (e) => {
     }
 });
 
-// إنشاء رمز إحالة فريد للمستخدم
-function generateReferralCode() {
-    // إنشاء رمز عشوائي مكون من 10 أحرف
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < 10; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-}
-
-// البحث عن المستخدم باستخدام رمز الإحالة
-async function findUserByReferralCode(referralCode) {
-    if (!referralCode) return null;
-    
-    try {
-        const usersRef = ref(database, 'users');
-        const snapshot = await get(usersRef);
-        
-        if (snapshot.exists()) {
-            const users = snapshot.val();
-            for (const userId in users) {
-                if (users[userId].referralCode === referralCode) {
-                    return {
-                        userId: userId,
-                        userData: users[userId]
-                    };
-                }
-            }
-        }
-        return null;
-    } catch (error) {
-        console.error('Error checking referral code:', error);
-        return null;
-    }
-}
-
 // تسجيل الدخول
 loginBtn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -86,6 +49,7 @@ loginBtn.addEventListener('click', async (e) => {
         
         showAuthMessage('تم تسجيل الدخول بنجاح!', 'success');
         
+        // الانتقال إلى الصفحة الرئيسية بعد تسجيل الدخول
         setTimeout(() => {
             window.location.href = 'index.html';
         }, 1000);
@@ -103,7 +67,7 @@ signupBtn.addEventListener('click', async (e) => {
     const email = document.getElementById('signup-email').value;
     const password = document.getElementById('signup-password').value;
     const address = document.getElementById('signup-address').value;
-    const referralCodeInput = document.getElementById('referral-code').value;
+    const referralCode = document.getElementById('signup-referral').value;
     
     if (!name || !phone || !email || !password) {
         showAuthMessage('يرجى ملء جميع الحقول الإلزامية', 'error');
@@ -111,23 +75,11 @@ signupBtn.addEventListener('click', async (e) => {
     }
     
     try {
-        // التحقق من صحة رابط الإحالة إذا تم إدخاله
-        let referrerInfo = null;
-        if (referralCodeInput) {
-            referrerInfo = await findUserByReferralCode(referralCodeInput);
-            if (!referrerInfo) {
-                showAuthMessage('رمز الإحالة غير صحيح', 'error');
-                return;
-            }
-            console.log("تم العثور على المستخدم المحيل:", referrerInfo.userId);
-        }
-        
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        console.log("تم إنشاء مستخدم جديد:", user.uid);
         
-        // إنشاء رمز إحالة للمستخدم الجديد
-        const referralCode = generateReferralCode();
+        // إنشاء كود إحالة للمستخدم الجديد
+        const referralCode = generateReferralCode(user.uid);
         
         // حفظ بيانات المستخدم الإضافية في قاعدة البيانات
         const userData = {
@@ -138,77 +90,38 @@ signupBtn.addEventListener('click', async (e) => {
             createdAt: Date.now(),
             isAdmin: false,
             referralCode: referralCode,
-            referredBy: referrerInfo ? referrerInfo.userId : null
+            referralCount: 0,
+            referredBy: null
         };
         
-        await set(ref(database, 'users/' + user.uid), userData);
-        console.log("تم حفظ بيانات المستخدم الجديد");
-        
-        // إذا كان المستخدم قد انضم عن طريق رابط الإحالة
-        if (referrerInfo) {
-            try {
-                // إنشاء مجموعة كاملة للمستخدمين الذين تمت إحالتهم
-                const referralGroupData = {
-                    userId: user.uid,
-                    name: name,
-                    email: email,
-                    phone: phone,
-                    address: address,
-                    joinDate: Date.now(),
-                    referralCodeUsed: referralCodeInput,
-                    status: 'active'
-                };
+        // إذا كان هناك كود إحالة، البحث عن المستخدم الذي يحمل هذا الكود
+        if (referralCodeInput) {
+            const referrerId = await findUserByReferralCode(referralCodeInput);
+            if (referrerId) {
+                userData.referredBy = referrerId;
                 
-                // إضافة المستخدم إلى مجموعة الإحالات الكاملة للمستخدم المحيل
-                await set(ref(database, 'referralGroups/' + referrerInfo.userId + '/members/' + user.uid), referralGroupData);
-                
-                // تحديث العدد الإجمالي للإحالات
-                await updateReferralCount(referrerInfo.userId);
-                
-                console.log("تم إضافة المستخدم إلى مجموعة الإحالات للمستخدم المحيل:", referrerInfo.userId);
-                
-            } catch (error) {
-                console.error("خطأ في إضافة المستخدم إلى مجموعة الإحالات:", error);
+                // زيادة عدد أحالات المستخدم الذي قام بالإحالة
+                await updateReferralCount(referrerId);
             }
         }
         
+        await set(ref(database, 'users/' + user.uid), userData);
+        
         showAuthMessage('تم إنشاء الحساب بنجاح!', 'success');
         
+        // الانتقال إلى الصفحة الرئيسية بعد إنشاء الحساب
         setTimeout(() => {
             window.location.href = 'index.html';
         }, 1000);
     } catch (error) {
-        console.error("خطأ عام في إنشاء الحساب:", error);
         showAuthMessage(getAuthErrorMessage(error.code), 'error');
     }
 });
 
-// تحديث عدد الإحالات
-async function updateReferralCount(userId) {
-    try {
-        const referralsRef = ref(database, 'referralGroups/' + userId + '/members');
-        const snapshot = await get(referralsRef);
-        
-        let referralsCount = 0;
-        if (snapshot.exists()) {
-            const referrals = snapshot.val();
-            referralsCount = Object.keys(referrals).length;
-        }
-        
-        // حفظ العدد في مكان منفصل للوصول السريع
-        await set(ref(database, 'users/' + userId + '/referralsCount'), referralsCount);
-        await set(ref(database, 'referralGroups/' + userId + '/totalCount'), referralsCount);
-        
-        console.log("تم تحديث عدد الإحالات إلى:", referralsCount);
-        
-    } catch (error) {
-        console.error("خطأ في تحديث عدد الإحالات:", error);
-    }
-}
-
 // استمع لتغير حالة المستخدم
 onAuthStateChanged(auth, (user) => {
     if (user && window.location.pathname.includes('auth.html')) {
+        // إذا كان المستخدم مسجلاً بالفعل، انتقل إلى الصفحة الرئيسية
         window.location.href = 'index.html';
     }
 });
@@ -233,17 +146,48 @@ function getAuthErrorMessage(code) {
     }
 }
 
-// معالجة رابط الإحالة إذا كان موجودًا في URL
-document.addEventListener('DOMContentLoaded', () {
-    const urlParams = new URLSearchParams(window.location.search);
-    const refCode = urlParams.get('ref');
-    
-    if (refCode) {
-        document.getElementById('referral-code').value = refCode;
+// إنشاء كود إحالة فريد
+function generateReferralCode(uid) {
+    // استخدام الوقت الحالي و UID لإنشاء كود فريد
+    const timestamp = Date.now().toString(36);
+    const uidPart = uid.substring(0, 5);
+    return `REF_${timestamp}_${uidPart}`.toUpperCase();
+}
+
+// البحث عن المستخدم باستخدام كود الإحالة
+async function findUserByReferralCode(code) {
+    try {
+        const usersRef = ref(database, 'users');
+        const snapshot = await get(usersRef);
         
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector('[data-tab="signup"]').classList.add('active');
-        loginForm.classList.add('hidden');
-        signupForm.classList.remove('hidden');
+        if (snapshot.exists()) {
+            const users = snapshot.val();
+            for (const userId in users) {
+                if (users[userId].referralCode === code) {
+                    return userId;
+                }
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error('Error finding user by referral code:', error);
+        return null;
     }
-});
+}
+
+// تحديث عدد أحالات المستخدم
+async function updateReferralCount(userId) {
+    try {
+        const userRef = ref(database, `users/${userId}`);
+        const snapshot = await get(userRef);
+        
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            const newCount = (userData.referralCount || 0) + 1;
+            
+            await set(ref(database, `users/${userId}/referralCount`), newCount);
+        }
+    } catch (error) {
+        console.error('Error updating referral count:', error);
+    }
+          }
