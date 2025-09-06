@@ -68,54 +68,6 @@ async function findUserByReferralCode(referralCode) {
     }
 }
 
-// زيادة عداد الإحالات بطريقة موثوقة
-async function incrementReferralCount(userId) {
-    try {
-        // المحاولة الأولى: استخدام الطريقة المباشرة
-        const userRef = ref(database, 'users/' + userId);
-        const snapshot = await get(userRef);
-        
-        if (snapshot.exists()) {
-            const userData = snapshot.val();
-            const currentCount = userData.referralsCount || 0;
-            const newCount = currentCount + 1;
-            
-            await set(ref(database, 'users/' + userId + '/referralsCount'), newCount);
-            console.log("تم زيادة العداد بنجاح إلى: ", newCount);
-            return newCount;
-        }
-        return 0;
-    } catch (error) {
-        console.error("المحاولة الأولى فشلت: ", error);
-        
-        // المحاولة الثانية: استخدام مسار منفصل للعدادات
-        try {
-            const counterRef = ref(database, 'referralCounters/' + userId);
-            const counterSnapshot = await get(counterRef);
-            
-            let currentCount = 0;
-            if (counterSnapshot.exists()) {
-                currentCount = counterSnapshot.val().count || 0;
-            }
-            
-            const newCount = currentCount + 1;
-            await set(ref(database, 'referralCounters/' + userId), {
-                count: newCount,
-                lastUpdated: Date.now()
-            });
-            
-            // أيضا تحديث العداد في بيانات المستخدم
-            await set(ref(database, 'users/' + userId + '/referralsCount'), newCount);
-            
-            console.log("تم زيادة العداد بنجاح (المحاولة الثانية): ", newCount);
-            return newCount;
-        } catch (secondError) {
-            console.error("المحاولة الثانية فشلت: ", secondError);
-            throw secondError;
-        }
-    }
-}
-
 // تسجيل الدخول
 loginBtn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -184,19 +136,16 @@ signupBtn.addEventListener('click', async (e) => {
             createdAt: Date.now(),
             isAdmin: false,
             referralCode: referralCode,
-            referredBy: referrerInfo ? referrerInfo.userId : null,
-            referralsCount: 0
+            referredBy: referrerInfo ? referrerInfo.userId : null
+            // تمت إزالة referralsCount لأننا سنعتمد على المجموعة
         };
         
         await set(ref(database, 'users/' + user.uid), userData);
         
-        // إذا كان المستخدم قد انضم عن طريق رابط الإحالة، زيادة عداد الإحالات للمستخدم المُحيل
+        // إذا كان المستخدم قد انضم عن طريق رابط الإحالة، إضافته إلى مجموعة الإحالات
         if (referrerInfo) {
             try {
-                // زيادة عداد الإحالات
-                await incrementReferralCount(referrerInfo.userId);
-                
-                // تسجيل تفاصيل الإحالة في مسار منفصل
+                // تسجيل تفاصيل الإحالة في مجموعة منفصلة
                 const referralData = {
                     referredUserId: user.uid,
                     referredUserName: name,
@@ -205,9 +154,12 @@ signupBtn.addEventListener('click', async (e) => {
                     referralCodeUsed: referralCodeInput
                 };
                 
+                // إضافة المستخدم إلى مجموعة الإحالات تحت المستخدم المحيل
                 await set(ref(database, 'userReferrals/' + referrerInfo.userId + '/' + user.uid), referralData);
+                
+                console.log("تم تسجيل الإحالة بنجاح في المجموعة");
             } catch (error) {
-                console.error("خطأ في تحديث عداد الإحالات: ", error);
+                console.error("خطأ في تسجيل الإحالة: ", error);
             }
         }
         
