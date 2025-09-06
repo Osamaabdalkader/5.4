@@ -13,6 +13,7 @@ const userAddress = document.getElementById('user-address');
 const logoutBtn = document.getElementById('logout-btn');
 const adminIcon = document.getElementById('admin-icon');
 const referralCount = document.getElementById('referral-count');
+const pointsCount = document.getElementById('points-count');
 const referralLink = document.getElementById('referral-link');
 const copyReferralBtn = document.getElementById('copy-referral');
 
@@ -39,7 +40,7 @@ function checkAuthState() {
 function loadUserData(userId) {
     const userRef = ref(database, 'users/' + userId);
     onValue(userRef, (snapshot) => {
-        console.log("بيانات المستخدم:", snapshot.val());
+        console.log("بيانات المستخدم:", snapshot.val()); // لأغراض debugging
         if (snapshot.exists()) {
             const userData = snapshot.val();
             
@@ -51,6 +52,7 @@ function loadUserData(userId) {
             
             // عرض معلومات الإحالة
             referralCount.textContent = userData.referralCount || 0;
+            pointsCount.textContent = userData.points || 0;
             
             // إنشاء رابط الإحالة
             const currentUrl = window.location.origin + window.location.pathname;
@@ -67,6 +69,10 @@ function loadUserData(userId) {
                 // حفظ الكود الجديد في قاعدة البيانات
                 set(ref(database, `users/${userId}/referralCode`), newReferralCode)
                     .catch(error => console.error("Error saving referral code:", error));
+                
+                // حفظ الرمز للبحث السريع
+                set(ref(database, `referralCodes/${newReferralCode}`), userId)
+                    .catch(error => console.error("Error saving referral code:", error));
             }
             
             // إظهار أيقونة الإدارة إذا كان المستخدم مشرفاً
@@ -74,7 +80,13 @@ function loadUserData(userId) {
                 adminIcon.style.display = 'flex';
             }
         } else {
-            // بيانات المستخدم غير موجودة - إنشاء بيانات أساسية
+            // بيانات المستخدم غير موجودة
+            userName.textContent = 'بيانات غير متاحة';
+            userEmail.textContent = 'بيانات غير متاحة';
+            userPhone.textContent = 'بيانات غير متاحة';
+            userAddress.textContent = 'بيانات غير متاحة';
+            
+            // محاولة إنشاء بيانات أساسية للمستخدم
             createBasicUserData(userId);
         }
     }, (error) => {
@@ -104,14 +116,14 @@ async function createBasicUserData(userId) {
             isAdmin: false,
             referralCode: generateReferralCode(userId),
             referralCount: 0,
-            referredBy: null
+            points: 0
         };
         
         await set(ref(database, 'users/' + userId), userData);
         console.log("تم إنشاء بيانات المستخدم الأساسية");
         
-        // إضافة المستخدم إلى شجرة الإحالة كجذر
-        await set(ref(database, `referralTree/${userId}`), {});
+        // حفظ الرمز للبحث السريع
+        await set(ref(database, `referralCodes/${userData.referralCode}`), userId);
         
         // إعادة تحميل البيانات
         loadUserData(userId);
@@ -130,6 +142,7 @@ copyReferralBtn.addEventListener('click', () => {
 // تسجيل الخروج
 logoutBtn.addEventListener('click', () => {
     signOut(auth).then(() => {
+        // توجيه إلى الصفحة الرئيسية بعد تسجيل الخروج
         window.location.href = 'index.html';
     }).catch((error) => {
         console.error('Error signing out:', error);
