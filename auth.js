@@ -67,7 +67,7 @@ signupBtn.addEventListener('click', async (e) => {
     const email = document.getElementById('signup-email').value;
     const password = document.getElementById('signup-password').value;
     const address = document.getElementById('signup-address').value;
-    const referralCode = document.getElementById('signup-referral').value;
+    const referralCodeInput = document.getElementById('signup-referral').value;
     
     if (!name || !phone || !email || !password) {
         showAuthMessage('يرجى ملء جميع الحقول الإلزامية', 'error');
@@ -190,4 +190,4 @@ async function updateReferralCount(userId) {
     } catch (error) {
         console.error('Error updating referral count:', error);
     }
-          }
+}
