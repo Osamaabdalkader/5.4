@@ -22,7 +22,7 @@ import {
   query, 
   orderByChild, 
   equalTo,
-  get
+  get // تأكد من وجود هذه الدالة
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 import { 
   getStorage, 
