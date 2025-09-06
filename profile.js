@@ -39,7 +39,7 @@ function checkAuthState() {
 function loadUserData(userId) {
     const userRef = ref(database, 'users/' + userId);
     onValue(userRef, (snapshot) => {
-        console.log("بيانات المستخدم:", snapshot.val()); // لأغراض debugging
+        console.log("بيانات المستخدم:", snapshot.val());
         if (snapshot.exists()) {
             const userData = snapshot.val();
             
@@ -74,13 +74,7 @@ function loadUserData(userId) {
                 adminIcon.style.display = 'flex';
             }
         } else {
-            // بيانات المستخدم غير موجودة
-            userName.textContent = 'بيانات غير متاحة';
-            userEmail.textContent = 'بيانات غير متاحة';
-            userPhone.textContent = 'بيانات غير متاحة';
-            userAddress.textContent = 'بيانات غير متاحة';
-            
-            // محاولة إنشاء بيانات أساسية للمستخدم
+            // بيانات المستخدم غير موجودة - إنشاء بيانات أساسية
             createBasicUserData(userId);
         }
     }, (error) => {
@@ -88,7 +82,7 @@ function loadUserData(userId) {
     });
 }
 
-// إنشاء كود إحالة فريد (نفس الدالة في auth.js)
+// إنشاء كود إحالة فريد
 function generateReferralCode(uid) {
     const timestamp = Date.now().toString(36);
     const uidPart = uid.substring(0, 5);
@@ -101,7 +95,6 @@ async function createBasicUserData(userId) {
         const user = auth.currentUser;
         if (!user) return;
         
-        // الحصول على معلومات المستخدم من authentication
         const userData = {
             name: user.displayName || "مستخدم جديد",
             email: user.email || "غير محدد",
@@ -116,6 +109,9 @@ async function createBasicUserData(userId) {
         
         await set(ref(database, 'users/' + userId), userData);
         console.log("تم إنشاء بيانات المستخدم الأساسية");
+        
+        // إضافة المستخدم إلى شجرة الإحالة كجذر
+        await set(ref(database, `referralTree/${userId}`), {});
         
         // إعادة تحميل البيانات
         loadUserData(userId);
@@ -134,7 +130,6 @@ copyReferralBtn.addEventListener('click', () => {
 // تسجيل الخروج
 logoutBtn.addEventListener('click', () => {
     signOut(auth).then(() => {
-        // توجيه إلى الصفحة الرئيسية بعد تسجيل الخروج
         window.location.href = 'index.html';
     }).catch((error) => {
         console.error('Error signing out:', error);
