@@ -67,7 +67,7 @@ signupBtn.addEventListener('click', async (e) => {
     const email = document.getElementById('signup-email').value;
     const password = document.getElementById('signup-password').value;
     const address = document.getElementById('signup-address').value;
-    const referralCodeInput = document.getElementById('signup-referral').value;
+    const referralCodeInput = document.getElementById('signup-referral').value.trim();
     
     if (!name || !phone || !email || !password) {
         showAuthMessage('يرجى ملء جميع الحقول الإلزامية', 'error');
@@ -96,12 +96,24 @@ signupBtn.addEventListener('click', async (e) => {
         
         // إذا كان هناك كود إحالة، البحث عن المستخدم الذي يحمل هذا الكود
         if (referralCodeInput) {
-            const referrerId = await findUserByReferralCode(referralCodeInput);
-            if (referrerId) {
-                userData.referredBy = referrerId;
-                
-                // زيادة عدد أحالات المستخدم الذي قام بالإحالة
-                await updateReferralCount(referrerId);
+            try {
+                const referrerId = await findUserByReferralCode(referralCodeInput);
+                if (referrerId) {
+                    userData.referredBy = referrerId;
+                    
+                    // زيادة عدد أحالات المستخدم الذي قام بالإحالة
+                    await updateReferralCount(referrerId);
+                    
+                    // إضافة المستخدم الجديد إلى فريق المُحيل
+                    await addToReferrerTeam(referrerId, user.uid);
+                } else {
+                    showAuthMessage('كود الإحالة غير صحيح', 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error processing referral:', error);
+                showAuthMessage('حدث خطأ في معالجة الإحالة', 'error');
+                return;
             }
         }
         
@@ -171,7 +183,7 @@ async function findUserByReferralCode(code) {
         return null;
     } catch (error) {
         console.error('Error finding user by referral code:', error);
-        return null;
+        throw error;
     }
 }
 
@@ -186,8 +198,26 @@ async function updateReferralCount(userId) {
             const newCount = (userData.referralCount || 0) + 1;
             
             await set(ref(database, `users/${userId}/referralCount`), newCount);
+            console.log(`تم تحديث عدد أحالات المستخدم ${userId} إلى ${newCount}`);
         }
     } catch (error) {
         console.error('Error updating referral count:', error);
+        throw error;
     }
 }
+
+// إضافة المستخدم الجديد إلى فريق المُحيل
+async function addToReferrerTeam(referrerId, newUserId) {
+    try {
+        // إنشاء سجل في فريق المُحيل
+        const teamRef = ref(database, `teams/${referrerId}/${newUserId}`);
+        await set(teamRef, {
+            joinedAt: Date.now(),
+            userId: newUserId
+        });
+        console.log(`تم إضافة المستخدم ${newUserId} إلى فريق ${referrerId}`);
+    } catch (error) {
+        console.error('Error adding to referrer team:', error);
+        throw error;
+    }
+                               }
