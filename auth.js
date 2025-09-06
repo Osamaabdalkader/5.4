@@ -91,35 +91,31 @@ signupBtn.addEventListener('click', async (e) => {
             isAdmin: false,
             referralCode: referralCode,
             referralCount: 0,
+            points: 0,
             referredBy: null
         };
         
-        let referrerId = null;
-        
         // إذا كان هناك كود إحالة، البحث عن المستخدم الذي يحمل هذا الكود
         if (referralCodeInput) {
-            referrerId = await findUserByReferralCode(referralCodeInput);
+            const referrerId = await findUserByReferralCode(referralCodeInput);
             if (referrerId) {
                 userData.referredBy = referrerId;
                 
                 // زيادة عدد أحالات المستخدم الذي قام بالإحالة
                 await updateReferralCount(referrerId);
                 
-                // إضافة المستخدم الجديد إلى شجرة الإحالة
-                await addToReferralTree(referrerId, user.uid);
-            } else {
-                showAuthMessage('كود الإحالة غير صحيح', 'error');
-                return;
+                // إضافة المستخدم الجديد إلى فريق المُحيل
+                await addToReferrerTeam(referrerId, user.uid, name, email);
+                
+                // منح نقاط للمُحيل
+                await addPointsToUser(referrerId, 10);
             }
         }
         
-        // حفظ بيانات المستخدم
         await set(ref(database, 'users/' + user.uid), userData);
         
-        // إذا لم يكن هناك محيل، إضافة المستخدم إلى الشجرة كجذر
-        if (!referrerId) {
-            await set(ref(database, 'referralTree/' + user.uid), {});
-        }
+        // حفظ الرمز للبحث السريع
+        await set(ref(database, 'referralCodes/' + referralCode), user.uid);
         
         showAuthMessage('تم إنشاء الحساب بنجاح!', 'success');
         
@@ -171,11 +167,19 @@ function generateReferralCode(uid) {
 // البحث عن المستخدم باستخدام كود الإحالة
 async function findUserByReferralCode(code) {
     try {
-        const usersRef = ref(database, 'users');
-        const snapshot = await get(usersRef);
+        const referralCodeRef = ref(database, 'referralCodes/' + code);
+        const snapshot = await get(referralCodeRef);
         
         if (snapshot.exists()) {
-            const users = snapshot.val();
+            return snapshot.val();
+        }
+        
+        // إذا لم يتم العثور على الرمز في referralCodes، نبحث في users
+        const usersRef = ref(database, 'users');
+        const usersSnapshot = await get(usersRef);
+        
+        if (usersSnapshot.exists()) {
+            const users = usersSnapshot.val();
             for (const userId in users) {
                 if (users[userId].referralCode === code) {
                     return userId;
@@ -185,7 +189,7 @@ async function findUserByReferralCode(code) {
         return null;
     } catch (error) {
         console.error('Error finding user by referral code:', error);
-        throw error;
+        return null;
     }
 }
 
@@ -200,25 +204,62 @@ async function updateReferralCount(userId) {
             const newCount = (userData.referralCount || 0) + 1;
             
             await set(ref(database, `users/${userId}/referralCount`), newCount);
-            console.log(`تم تحديث عدد أحالات المستخدم ${userId} إلى ${newCount}`);
         }
     } catch (error) {
         console.error('Error updating referral count:', error);
-        throw error;
     }
 }
 
-// إضافة المستخدم الجديد إلى شجرة الإحالة
-async function addToReferralTree(referrerId, newUserId) {
+// إضافة المستخدم الجديد إلى فريق المُحيل
+async function addToReferrerTeam(referrerId, newUserId, name, email) {
     try {
-        // إضافة المستخدم الجديد تحت المُحيل في الشجرة
-        const userTreeRef = ref(database, `referralTree/${referrerId}/${newUserId}`);
-        await set(userTreeRef, {
+        // إضافة إلى فريق المُحيل
+        await set(ref(database, `userReferrals/${referrerId}/${newUserId}`), {
+            name: name,
+            email: email,
+            joinDate: new Date().toISOString()
+        });
+        
+        // إضافة إلى الشجرة التفرعية
+        await set(ref(database, `referralTree/${referrerId}/${newUserId}`), {
+            level: 1,
             joinedAt: Date.now()
         });
-        console.log(`تم إضافة المستخدم ${newUserId} إلى شجرة إحالة ${referrerId}`);
+        
+        // إذا كان المُحيل له مُحيل، إضافة المستخدم الجديد إلى الشجرة بمستوى 2
+        const referrerData = await get(ref(database, `users/${referrerId}`));
+        if (referrerData.exists() && referrerData.val().referredBy) {
+            const grandParentId = referrerData.val().referredBy;
+            await set(ref(database, `referralTree/${grandParentId}/${newUserId}`), {
+                level: 2,
+                joinedAt: Date.now()
+            });
+            
+            // إضافة إلى فريق الجد
+            await set(ref(database, `teams/${grandParentId}/${newUserId}`), {
+                joinedAt: Date.now(),
+                userId: newUserId,
+                level: 2
+            });
+        }
     } catch (error) {
-        console.error('Error adding to referral tree:', error);
-        throw error;
+        console.error('Error adding to referrer team:', error);
     }
-                                                      }
+}
+
+// إضافة نقاط للمستخدم
+async function addPointsToUser(userId, points) {
+    try {
+        const userRef = ref(database, `users/${userId}`);
+        const snapshot = await get(userRef);
+        
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            const newPoints = (userData.points || 0) + points;
+            
+            await set(ref(database, `users/${userId}/points`), newPoints);
+        }
+    } catch (error) {
+        console.error('Error adding points to user:', error);
+    }
+          }
