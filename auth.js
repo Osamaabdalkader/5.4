@@ -57,18 +57,18 @@ async function findUserByReferralCode(referralCode) {
                     return {
                         userId: userId,
                         userData: users[userId]
-                    }; // إرجاع كامل بيانات المستخدم الذي يملك رمز الإحالة
+                    };
                 }
             }
         }
-        return null; // لم يتم العثور على رمز الإحالة
+        return null;
     } catch (error) {
         console.error('Error checking referral code:', error);
         return null;
     }
 }
 
-// زيادة عداد الإحالات بطريقة آمنة
+// زيادة عداد الإحالات بطريقة آمنة باستخدام المعاملات اليدوية
 async function incrementReferralCount(userId) {
     try {
         const userRef = ref(database, 'users/' + userId);
@@ -79,6 +79,7 @@ async function incrementReferralCount(userId) {
             const currentCount = userData.referralsCount || 0;
             const newCount = currentCount + 1;
             
+            // استخدام set لتحديث الحقل فقط
             await set(ref(database, 'users/' + userId + '/referralsCount'), newCount);
             return newCount;
         }
@@ -107,7 +108,6 @@ loginBtn.addEventListener('click', async (e) => {
         
         showAuthMessage('تم تسجيل الدخول بنجاح!', 'success');
         
-        // الانتقال إلى الصفحة الرئيسية بعد تسجيل الدخول
         setTimeout(() => {
             window.location.href = 'index.html';
         }, 1000);
@@ -141,12 +141,10 @@ signupBtn.addEventListener('click', async (e) => {
                 showAuthMessage('رمز الإحالة غير صحيح', 'error');
                 return;
             }
-            console.log("تم العثور على المستخدم المحيل: ", referrerInfo);
         }
         
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        console.log("تم إنشاء مستخدم جديد: ", user.uid);
         
         // إنشاء رمز إحالة للمستخدم الجديد
         const referralCode = generateReferralCode();
@@ -160,21 +158,17 @@ signupBtn.addEventListener('click', async (e) => {
             createdAt: Date.now(),
             isAdmin: false,
             referralCode: referralCode,
-            referredBy: referrerInfo ? referrerInfo.userId : null, // حفظ معرف المستخدم الذي أحاله
+            referredBy: referrerInfo ? referrerInfo.userId : null,
             referralsCount: 0
         };
         
         await set(ref(database, 'users/' + user.uid), userData);
-        console.log("تم حفظ بيانات المستخدم الجديد");
         
         // إذا كان المستخدم قد انضم عن طريق رابط إحالة، زيادة عداد الإحالات للمستخدم المُحيل
         if (referrerInfo) {
             try {
-                console.log("محاولة زيادة عداد الإحالات للمستخدم المحيل: ", referrerInfo.userId);
-                
                 // زيادة عداد الإحالات
                 await incrementReferralCount(referrerInfo.userId);
-                console.log("تم زيادة عداد الإحالات بنجاح");
                 
                 // تسجيل تفاصيل الإحالة في مسار منفصل
                 const referralData = {
@@ -186,8 +180,6 @@ signupBtn.addEventListener('click', async (e) => {
                 };
                 
                 await set(ref(database, 'userReferrals/' + referrerInfo.userId + '/' + user.uid), referralData);
-                console.log("تم تسجيل تفاصيل الإحالة");
-                
             } catch (error) {
                 console.error("خطأ في تحديث عداد الإحالات: ", error);
             }
@@ -195,12 +187,10 @@ signupBtn.addEventListener('click', async (e) => {
         
         showAuthMessage('تم إنشاء الحساب بنجاح!', 'success');
         
-        // الانتقال إلى الصفحة الرئيسية بعد إنشاء الحساب
         setTimeout(() => {
             window.location.href = 'index.html';
         }, 1000);
     } catch (error) {
-        console.error("خطأ عام في إنشاء الحساب: ", error);
         showAuthMessage(getAuthErrorMessage(error.code), 'error');
     }
 });
@@ -208,7 +198,6 @@ signupBtn.addEventListener('click', async (e) => {
 // استمع لتغير حالة المستخدم
 onAuthStateChanged(auth, (user) => {
     if (user && window.location.pathname.includes('auth.html')) {
-        // إذا كان المستخدم مسجلاً بالفعل، انتقل إلى الصفحة الرئيسية
         window.location.href = 'index.html';
     }
 });
@@ -241,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (refCode) {
         document.getElementById('referral-code').value = refCode;
         
-        // إظهار نموذج إنشاء الحساب تلقائيًا إذا كان هناك رابط إحالة
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('[data-tab="signup"]').classList.add('active');
         loginForm.classList.add('hidden');
