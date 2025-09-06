@@ -1,7 +1,7 @@
 // استيراد دوال Firebase
 import { 
   auth, database, signOut,
-  ref, onValue, get,
+  ref, onValue,
   onAuthStateChanged
 } from './firebase.js';
 
@@ -10,38 +10,27 @@ const userName = document.getElementById('user-name');
 const userEmail = document.getElementById('user-email');
 const userPhone = document.getElementById('user-phone');
 const userAddress = document.getElementById('user-address');
-const userReferrals = document.getElementById('user-referrals');
-const referralLink = document.getElementById('referral-link');
-const copyReferralBtn = document.getElementById('copy-referral-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const adminIcon = document.getElementById('admin-icon');
+const referralCount = document.getElementById('referral-count');
+const referralLink = document.getElementById('referral-link');
+const copyReferralBtn = document.getElementById('copy-referral');
 
 // تحميل بيانات المستخدم عند بدء التحميل
 document.addEventListener('DOMContentLoaded', () => {
     checkAuthState();
 });
 
-// التعامل مع نسخ رابط الإحالة
-copyReferralBtn.addEventListener('click', () => {
-    referralLink.select();
-    document.execCommand('copy');
-    
-    const originalText = copyReferralBtn.innerHTML;
-    copyReferralBtn.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
-    
-    setTimeout(() => {
-        copyReferralBtn.innerHTML = originalText;
-    }, 2000);
-});
-
 // التحقق من حالة المصادقة
 function checkAuthState() {
     onAuthStateChanged(auth, user => {
         if (!user) {
+            // توجيه إلى صفحة التسجيل إذا لم يكن المستخدم مسجلاً
             window.location.href = 'auth.html';
             return;
         }
         
+        // تحميل بيانات المستخدم الحالي
         loadUserData(user.uid);
     });
 }
@@ -49,74 +38,49 @@ function checkAuthState() {
 // تحميل بيانات المستخدم
 function loadUserData(userId) {
     const userRef = ref(database, 'users/' + userId);
-    onValue(userRef, async (snapshot) => {
+    onValue(userRef, (snapshot) => {
         if (snapshot.exists()) {
             const userData = snapshot.val();
             
+            // عرض بيانات المستخدم
             userName.textContent = userData.name || 'غير محدد';
             userEmail.textContent = userData.email || 'غير محدد';
             userPhone.textContent = userData.phone || 'غير محدد';
             userAddress.textContent = userData.address || 'غير محدد';
             
-            // تحميل عدد الإحالات من المجموعة الكاملة
-            await loadReferralsCount(userId);
+            // عرض معلومات الإحالة
+            referralCount.textContent = userData.referralCount || 0;
             
-            if (userData.referralCode) {
-                const currentUrl = window.location.origin + window.location.pathname;
-                const baseUrl = currentUrl.replace('profile.html', 'auth.html');
-                referralLink.value = `${baseUrl}?ref=${userData.referralCode}`;
-            }
+            // إنشاء رابط الإحالة
+            const currentUrl = window.location.origin + window.location.pathname;
+            const baseUrl = currentUrl.replace('profile.html', 'auth.html');
+            referralLink.value = `${baseUrl}?ref=${userData.referralCode}`;
             
+            // إظهار أيقونة الإدارة إذا كان المستخدم مشرفاً
             if (userData.isAdmin) {
                 adminIcon.style.display = 'flex';
             }
         } else {
+            // بيانات المستخدم غير موجودة
             userName.textContent = 'بيانات غير متاحة';
             userEmail.textContent = 'بيانات غير متاحة';
             userPhone.textContent = 'بيانات غير متاحة';
             userAddress.textContent = 'بيانات غير متاحة';
-            userReferrals.textContent = '0';
         }
     });
 }
 
-// تحميل عدد الإحالات من المجموعة الكاملة
-async function loadReferralsCount(userId) {
-    try {
-        // المحاولة الأولى: الحصول على العدد المخزن مسبقاً
-        const countRef = ref(database, 'users/' + userId + '/referralsCount');
-        const countSnapshot = await get(countRef);
-        
-        if (countSnapshot.exists()) {
-            userReferrals.textContent = countSnapshot.val();
-            console.log("تم تحميل عدد الإحالات من التخزين السريع:", countSnapshot.val());
-        } else {
-            // المحاولة الثانية: حساب العدد من المجموعة
-            const referralsRef = ref(database, 'referralGroups/' + userId + '/members');
-            const snapshot = await get(referralsRef);
-            
-            let referralsCount = 0;
-            if (snapshot.exists()) {
-                const referrals = snapshot.val();
-                referralsCount = Object.keys(referrals).length;
-                
-                // تخزين العدد للوصول السريع مستقبلاً
-                await set(ref(database, 'users/' + userId + '/referralsCount'), referralsCount);
-            }
-            
-            userReferrals.textContent = referralsCount;
-            console.log("تم حساب عدد الإحالات من المجموعة:", referralsCount);
-        }
-        
-    } catch (error) {
-        console.error("خطأ في تحميل عدد الإحالات:", error);
-        userReferrals.textContent = '0';
-    }
-}
+// نسخ رابط الإحالة
+copyReferralBtn.addEventListener('click', () => {
+    referralLink.select();
+    document.execCommand('copy');
+    alert('تم نسخ رابط الإحالة إلى الحافظة');
+});
 
 // تسجيل الخروج
 logoutBtn.addEventListener('click', () => {
     signOut(auth).then(() => {
+        // توجيه إلى الصفحة الرئيسية بعد تسجيل الخروج
         window.location.href = 'index.html';
     }).catch((error) => {
         console.error('Error signing out:', error);
