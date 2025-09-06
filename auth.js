@@ -147,21 +147,28 @@ signupBtn.addEventListener('click', async (e) => {
         // إذا كان المستخدم قد انضم عن طريق رابط الإحالة
         if (referrerInfo) {
             try {
-                // تسجيل تفاصيل الإحالة في مسار منفصل
-                const referralData = {
-                    referredUserId: user.uid,
-                    referredUserName: name,
-                    referredUserEmail: email,
-                    timestamp: Date.now(),
-                    referralCodeUsed: referralCodeInput
+                // إنشاء مجموعة كاملة للمستخدمين الذين تمت إحالتهم
+                const referralGroupData = {
+                    userId: user.uid,
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    address: address,
+                    joinDate: Date.now(),
+                    referralCodeUsed: referralCodeInput,
+                    status: 'active'
                 };
                 
-                // إضافة الإحالة إلى المسار المنفصل
-                await set(ref(database, 'referrals/' + referrerInfo.userId + '/' + user.uid), referralData);
-                console.log("تم تسجيل الإحالة بنجاح للمستخدم المحيل:", referrerInfo.userId);
+                // إضافة المستخدم إلى مجموعة الإحالات الكاملة للمستخدم المحيل
+                await set(ref(database, 'referralGroups/' + referrerInfo.userId + '/members/' + user.uid), referralGroupData);
+                
+                // تحديث العدد الإجمالي للإحالات
+                await updateReferralCount(referrerInfo.userId);
+                
+                console.log("تم إضافة المستخدم إلى مجموعة الإحالات للمستخدم المحيل:", referrerInfo.userId);
                 
             } catch (error) {
-                console.error("خطأ في تسجيل الإحالة:", error);
+                console.error("خطأ في إضافة المستخدم إلى مجموعة الإحالات:", error);
             }
         }
         
@@ -175,6 +182,29 @@ signupBtn.addEventListener('click', async (e) => {
         showAuthMessage(getAuthErrorMessage(error.code), 'error');
     }
 });
+
+// تحديث عدد الإحالات
+async function updateReferralCount(userId) {
+    try {
+        const referralsRef = ref(database, 'referralGroups/' + userId + '/members');
+        const snapshot = await get(referralsRef);
+        
+        let referralsCount = 0;
+        if (snapshot.exists()) {
+            const referrals = snapshot.val();
+            referralsCount = Object.keys(referrals).length;
+        }
+        
+        // حفظ العدد في مكان منفصل للوصول السريع
+        await set(ref(database, 'users/' + userId + '/referralsCount'), referralsCount);
+        await set(ref(database, 'referralGroups/' + userId + '/totalCount'), referralsCount);
+        
+        console.log("تم تحديث عدد الإحالات إلى:", referralsCount);
+        
+    } catch (error) {
+        console.error("خطأ في تحديث عدد الإحالات:", error);
+    }
+}
 
 // استمع لتغير حالة المستخدم
 onAuthStateChanged(auth, (user) => {
@@ -204,7 +234,7 @@ function getAuthErrorMessage(code) {
 }
 
 // معالجة رابط الإحالة إذا كان موجودًا في URL
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () {
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');
     
