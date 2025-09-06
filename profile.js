@@ -62,8 +62,8 @@ function loadUserData(userId) {
             userPhone.textContent = userData.phone || 'غير محدد';
             userAddress.textContent = userData.address || 'غير محدد';
             
-            // عرض عدد الإحالات - نستخدم البيانات المباشرة من المستخدم
-            userReferrals.textContent = userData.referralsCount || 0;
+            // تحميل عدد الإحالات الحقيقي من المسار المنفصل
+            await loadActualReferralsCount(userId, userData);
             
             // إنشاء وعرض رابط الإحالة
             if (userData.referralCode) {
@@ -76,9 +76,6 @@ function loadUserData(userId) {
             if (userData.isAdmin) {
                 adminIcon.style.display = 'flex';
             }
-            
-            // تحميل قائمة المستخدمين الذين تمت إحالتهم (اختياري)
-            await loadReferralsList(userId);
         } else {
             // بيانات المستخدم غير موجودة
             userName.textContent = 'بيانات غير متاحة';
@@ -90,27 +87,29 @@ function loadUserData(userId) {
     });
 }
 
-// تحميل قائمة المستخدمين الذين تمت إحالتهم (وظيفة إضافية)
-async function loadReferralsList(userId) {
+// تحميل عدد الإحالات الحقيقي
+async function loadActualReferralsCount(userId, userData) {
     try {
         const referralsRef = ref(database, 'userReferrals/' + userId);
         const snapshot = await get(referralsRef);
         
+        let actualCount = 0;
         if (snapshot.exists()) {
             const referrals = snapshot.val();
-            const referralsCount = Object.keys(referrals).length;
-            console.log("عدد المستخدمين الذين تمت إحالتهم: ", referralsCount);
-            
-            // تحديث العدد إذا كان مختلفاً عن القيمة المخزنة
-            if (referralsCount !== (parseInt(userReferrals.textContent) || 0)) {
-                userReferrals.textContent = referralsCount;
-                
-                // تحديث القيمة في قاعدة البيانات للحفاظ على التزامن
-                await set(ref(database, 'users/' + userId + '/referralsCount'), referralsCount);
-            }
+            actualCount = Object.keys(referrals).length;
+        }
+        
+        // عرض العدد الحقيقي
+        userReferrals.textContent = actualCount;
+        
+        // إذا كان العدد مختلفاً عن القيمة المخزنة، قم بتحديثها
+        if (actualCount !== (userData.referralsCount || 0)) {
+            await set(ref(database, 'users/' + userId + '/referralsCount'), actualCount);
+            console.log("تم تحديث عداد الإحالات إلى القيمة الصحيحة: ", actualCount);
         }
     } catch (error) {
-        console.error("خطأ في تحميل قائمة الإحالات: ", error);
+        console.error("خطأ في تحميل عدد الإحالات: ", error);
+        userReferrals.textContent = userData.referralsCount || 0;
     }
 }
 
