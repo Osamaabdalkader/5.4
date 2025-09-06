@@ -1,6 +1,6 @@
 // استيراد دوال Firebase
 import { 
-  auth, database, ref, set, get,
+  auth, database, ref, set, get, runTransaction,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged 
 } from './firebase.js';
 
@@ -68,25 +68,40 @@ async function findUserByReferralCode(referralCode) {
     }
 }
 
-// زيادة عداد الإحالات بطريقة آمنة باستخدام المعاملات اليدوية
+// زيادة عداد الإحالات باستخدام المعاملات (Transactions)
 async function incrementReferralCount(userId) {
     try {
-        const userRef = ref(database, 'users/' + userId);
-        const snapshot = await get(userRef);
+        const referralsCountRef = ref(database, 'users/' + userId + '/referralsCount');
         
-        if (snapshot.exists()) {
-            const userData = snapshot.val();
-            const currentCount = userData.referralsCount || 0;
-            const newCount = currentCount + 1;
-            
-            // استخدام set لتحديث الحقل فقط
-            await set(ref(database, 'users/' + userId + '/referralsCount'), newCount);
-            return newCount;
-        }
-        return 0;
+        // استخدام المعاملة لضمان الزيادة الصحيحة حتى مع التحديثات المتزامنة
+        const result = await runTransaction(referralsCountRef, (currentCount) => {
+            // إذا كان العداد غير موجود، نبدأ من الصفر
+            return (currentCount || 0) + 1;
+        });
+        
+        console.log("تم زيادة العداد بنجاح إلى: ", result.snapshot.val());
+        return result.snapshot.val();
     } catch (error) {
-        console.error("Error incrementing referral count:", error);
-        throw error;
+        console.error("فشل في زيادة العداد باستخدام المعاملة: ", error);
+        
+        // Fallback: الطريقة العادية إذا فشلت المعاملة
+        try {
+            const userRef = ref(database, 'users/' + userId);
+            const snapshot = await get(userRef);
+            
+            if (snapshot.exists()) {
+                const userData = snapshot.val();
+                const currentCount = userData.referralsCount || 0;
+                const newCount = currentCount + 1;
+                
+                await set(ref(database, 'users/' + userId + '/referralsCount'), newCount);
+                return newCount;
+            }
+            return 0;
+        } catch (fallbackError) {
+            console.error("الطريقة البديلة أيضا فشلت: ", fallbackError);
+            throw fallbackError;
+        }
     }
 }
 
@@ -164,10 +179,10 @@ signupBtn.addEventListener('click', async (e) => {
         
         await set(ref(database, 'users/' + user.uid), userData);
         
-        // إذا كان المستخدم قد انضم عن طريق رابط إحالة، زيادة عداد الإحالات للمستخدم المُحيل
+        // إذا كان المستخدم قد انضم عن طريق رابط الإحالة، زيادة عداد الإحالات للمستخدم المُحيل
         if (referrerInfo) {
             try {
-                // زيادة عداد الإحالات
+                // زيادة عداد الإحالات باستخدام المعاملات
                 await incrementReferralCount(referrerInfo.userId);
                 
                 // تسجيل تفاصيل الإحالة في مسار منفصل
