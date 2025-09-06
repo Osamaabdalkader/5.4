@@ -83,6 +83,7 @@ function loadUserData(userId) {
 // تحميل عدد الإحالات الحقيقي من المسار المنفصل
 async function loadActualReferralsCount(userId, userData) {
     try {
+        // المحاولة الأولى: استخدام المسار userReferrals
         const referralsRef = ref(database, 'userReferrals/' + userId);
         const snapshot = await get(referralsRef);
         
@@ -90,14 +91,29 @@ async function loadActualReferralsCount(userId, userData) {
         if (snapshot.exists()) {
             const referrals = snapshot.val();
             actualCount = Object.keys(referrals).length;
+        } else {
+            // المحاولة الثانية: استخدام المسار referralCounters
+            const counterRef = ref(database, 'referralCounters/' + userId);
+            const counterSnapshot = await get(counterRef);
             
-            // مزامنة العدد مع الحقل في userData إذا كان مختلفًا
-            if (actualCount !== (userData.referralsCount || 0)) {
-                await set(ref(database, 'users/' + userId + '/referralsCount'), actualCount);
+            if (counterSnapshot.exists()) {
+                actualCount = counterSnapshot.val().count || 0;
+            } else {
+                // المحاولة الثالثة: استخدام القيمة المخزنة في userData
+                actualCount = userData.referralsCount || 0;
             }
         }
         
+        // عرض العدد الحقيقي
         userReferrals.textContent = actualCount;
+        
+        // مزامنة جميع المصادر مع القيمة الصحيحة
+        await set(ref(database, 'users/' + userId + '/referralsCount'), actualCount);
+        await set(ref(database, 'referralCounters/' + userId), {
+            count: actualCount,
+            lastUpdated: Date.now()
+        });
+        
     } catch (error) {
         console.error("خطأ في تحميل عدد الإحالات: ", error);
         userReferrals.textContent = userData.referralsCount || 0;
