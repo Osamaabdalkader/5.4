@@ -466,3 +466,65 @@ footer {
     color: #6c757d;
     margin: 0;
   }
+
+/* إضافة هذه التنسيقات إلى ملف profile.css الحالي */
+
+.referral-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.referral-section h2 {
+    margin-bottom: 15px;
+    color: #4CAF50;
+}
+
+.referral-details {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.referral-detail {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.referral-detail i {
+    color: #4CAF50;
+    width: 20px;
+}
+
+.referral-link {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.referral-link input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.btn-small {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Tajawal', sans-serif;
+    font-weight: 500;
+}
+
+.btn-small:hover {
+    background-color: #3e8e41;
+}
+
