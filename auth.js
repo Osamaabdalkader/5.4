@@ -1,6 +1,6 @@
 // استيراد دوال Firebase
 import { 
-  auth, database, ref, set, get,
+  auth, database, ref, set, get, runTransaction,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged 
 } from './firebase.js';
 
@@ -54,7 +54,10 @@ async function findUserByReferralCode(referralCode) {
             const users = snapshot.val();
             for (const userId in users) {
                 if (users[userId].referralCode === referralCode) {
-                    return userId; // إرجاع معرف المستخدم الذي يملك رمز الإحالة
+                    return {
+                        userId: userId,
+                        userData: users[userId]
+                    }; // إرجاع كامل بيانات المستخدم الذي يملك رمز الإحالة
                 }
             }
         }
@@ -110,17 +113,19 @@ signupBtn.addEventListener('click', async (e) => {
     
     try {
         // التحقق من صحة رابط الإحالة إذا تم إدخاله
-        let referredByUserId = null;
+        let referrerInfo = null;
         if (referralCodeInput) {
-            referredByUserId = await findUserByReferralCode(referralCodeInput);
-            if (!referredByUserId) {
+            referrerInfo = await findUserByReferralCode(referralCodeInput);
+            if (!referrerInfo) {
                 showAuthMessage('رمز الإحالة غير صحيح', 'error');
                 return;
             }
+            console.log("تم العثور على المستخدم المحيل: ", referrerInfo);
         }
         
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
+        console.log("تم إنشاء مستخدم جديد: ", user.uid);
         
         // إنشاء رمز إحالة للمستخدم الجديد
         const referralCode = generateReferralCode();
@@ -134,36 +139,39 @@ signupBtn.addEventListener('click', async (e) => {
             createdAt: Date.now(),
             isAdmin: false,
             referralCode: referralCode,
-            referredBy: referredByUserId, // حفظ معرف المستخدم الذي أحاله
+            referredBy: referrerInfo ? referrerInfo.userId : null, // حفظ معرف المستخدم الذي أحاله
             referralsCount: 0
         };
         
         await set(ref(database, 'users/' + user.uid), userData);
+        console.log("تم حفظ بيانات المستخدم الجديد");
         
         // إذا كان المستخدم قد انضم عن طريق رابط إحالة، زيادة عداد الإحالات للمستخدم المُحيل
-        if (referredByUserId) {
+        if (referrerInfo) {
             try {
-                const referrerRef = ref(database, 'users/' + referredByUserId);
-                const referrerSnapshot = await get(referrerRef);
+                console.log("محاولة زيادة عداد الإحالات للمستخدم المحيل: ", referrerInfo.userId);
                 
-                if (referrerSnapshot.exists()) {
-                    const referrerData = referrerSnapshot.val();
-                    const updatedCount = (referrerData.referralsCount || 0) + 1;
-                    
-                    // تحديث عداد الإحالات للمستخدم المُحيل
-                    await set(ref(database, 'users/' + referredByUserId + '/referralsCount'), updatedCount);
-                    
-                    // تسجيل تفاصيل الإحالة في مسار منفصل
-                    const referralData = {
-                        referredUserId: user.uid,
-                        referredUserName: name,
-                        timestamp: Date.now()
-                    };
-                    
-                    await set(ref(database, 'userReferrals/' + referredByUserId + '/' + user.uid), referralData);
-                    
-                    console.log("تم تحديث عداد الإحالات للمستخدم: ", referredByUserId);
-                }
+                // استخدام معاملة (transaction) لضمان زيادة العداد بشكل صحيح
+                const referralsCountRef = ref(database, 'users/' + referrerInfo.userId + '/referralsCount');
+                await runTransaction(referralsCountRef, (currentCount) => {
+                    // إذا كان العداد غير موجود، نبدأ من الصفر
+                    return (currentCount || 0) + 1;
+                });
+                
+                console.log("تم زيادة عداد الإحالات بنجاح");
+                
+                // تسجيل تفاصيل الإحالة في مسار منفصل
+                const referralData = {
+                    referredUserId: user.uid,
+                    referredUserName: name,
+                    referredUserEmail: email,
+                    timestamp: Date.now(),
+                    referralCodeUsed: referralCodeInput
+                };
+                
+                await set(ref(database, 'userReferrals/' + referrerInfo.userId + '/' + user.uid), referralData);
+                console.log("تم تسجيل تفاصيل الإحالة");
+                
             } catch (error) {
                 console.error("خطأ في تحديث عداد الإحالات: ", error);
             }
@@ -176,6 +184,7 @@ signupBtn.addEventListener('click', async (e) => {
             window.location.href = 'index.html';
         }, 1000);
     } catch (error) {
+        console.error("خطأ عام في إنشاء الحساب: ", error);
         showAuthMessage(getAuthErrorMessage(error.code), 'error');
     }
 });
