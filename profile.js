@@ -101,6 +101,7 @@ async function createBasicUserData(userId) {
         const user = auth.currentUser;
         if (!user) return;
         
+        // الحصول على معلومات المستخدم من authentication
         const userData = {
             name: user.displayName || "مستخدم جديد",
             email: user.email || "غير محدد",
@@ -109,7 +110,8 @@ async function createBasicUserData(userId) {
             createdAt: Date.now(),
             isAdmin: false,
             referralCode: generateReferralCode(userId),
-            referralCount: 0
+            referralCount: 0,
+            referredBy: null
         };
         
         await set(ref(database, 'users/' + userId), userData);
