@@ -21,29 +21,19 @@
 
     <!-- محتوى الصفحة -->
     <div class="container">
-        <div class="team-stats">
-            <div class="stat-card">
-                <i class="fas fa-users"></i>
-                <h3>عدد أعضاء الفريق</h3>
-                <span id="team-members-count">0</span>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-link"></i>
-                <h3>رابط الإحالة الخاص بك</h3>
-                <div class="referral-link-container">
-                    <input type="text" id="team-referral-link" readonly>
-                    <button id="team-copy-referral-btn" class="btn-small">
-                        <i class="fas fa-copy"></i> نسخ
-                    </button>
+        <div class="team-header">
+            <h2>أعضاء الفريق</h2>
+            <div class="team-stats">
+                <div class="stat">
+                    <i class="fas fa-users"></i>
+                    <span>عدد الأعضاء: <span id="team-count">0</span></span>
                 </div>
             </div>
         </div>
 
-        <div class="team-members">
-            <h2>أعضاء الفريق</h2>
-            <div id="team-members-list" class="members-list">
-                <!-- سيتم ملء هذه القائمة بالأعضاء عبر JavaScript -->
-            </div>
+        <div id="team-list" class="team-list">
+            <!-- سيتم ملء هذه القائمة بالأعضاء عبر JavaScript -->
+            <div class="loading">جاري تحميل بيانات الفريق...</div>
         </div>
     </div>
 
@@ -61,13 +51,13 @@
             <a href="add-post.html" class="icon highlight">
                 <i class="fas fa-plus"></i>
             </a>
-            <a href="groups.html" class="icon active">
-                <i class="fas fa-users"></i>
-                <span>فريقي</span>
-            </a>
             <a href="#" class="icon" id="support-icon">
                 <i class="fas fa-headset"></i>
                 <span>الدعم</span>
+            </a>
+            <a href="#" class="icon" id="more-icon">
+                <i class="fas fa-ellipsis-h"></i>
+                <span>المزيد</span>
             </a>
             <!-- أيقونة الإدارة (تظهر للمشرفين فقط) -->
             <a href="orders.html" class="icon" id="admin-icon" style="display: none;">
