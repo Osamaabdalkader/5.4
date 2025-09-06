@@ -94,30 +94,32 @@ signupBtn.addEventListener('click', async (e) => {
             referredBy: null
         };
         
+        let referrerId = null;
+        
         // إذا كان هناك كود إحالة، البحث عن المستخدم الذي يحمل هذا الكود
         if (referralCodeInput) {
-            try {
-                const referrerId = await findUserByReferralCode(referralCodeInput);
-                if (referrerId) {
-                    userData.referredBy = referrerId;
-                    
-                    // زيادة عدد أحالات المستخدم الذي قام بالإحالة
-                    await updateReferralCount(referrerId);
-                    
-                    // إضافة المستخدم الجديد إلى فريق المُحيل
-                    await addToReferrerTeam(referrerId, user.uid);
-                } else {
-                    showAuthMessage('كود الإحالة غير صحيح', 'error');
-                    return;
-                }
-            } catch (error) {
-                console.error('Error processing referral:', error);
-                showAuthMessage('حدث خطأ في معالجة الإحالة', 'error');
+            referrerId = await findUserByReferralCode(referralCodeInput);
+            if (referrerId) {
+                userData.referredBy = referrerId;
+                
+                // زيادة عدد أحالات المستخدم الذي قام بالإحالة
+                await updateReferralCount(referrerId);
+                
+                // إضافة المستخدم الجديد إلى شجرة الإحالة
+                await addToReferralTree(referrerId, user.uid);
+            } else {
+                showAuthMessage('كود الإحالة غير صحيح', 'error');
                 return;
             }
         }
         
+        // حفظ بيانات المستخدم
         await set(ref(database, 'users/' + user.uid), userData);
+        
+        // إذا لم يكن هناك محيل، إضافة المستخدم إلى الشجرة كجذر
+        if (!referrerId) {
+            await set(ref(database, 'referralTree/' + user.uid), {});
+        }
         
         showAuthMessage('تم إنشاء الحساب بنجاح!', 'success');
         
@@ -206,18 +208,17 @@ async function updateReferralCount(userId) {
     }
 }
 
-// إضافة المستخدم الجديد إلى فريق المُحيل
-async function addToReferrerTeam(referrerId, newUserId) {
+// إضافة المستخدم الجديد إلى شجرة الإحالة
+async function addToReferralTree(referrerId, newUserId) {
     try {
-        // إنشاء سجل في فريق المُحيل
-        const teamRef = ref(database, `teams/${referrerId}/${newUserId}`);
-        await set(teamRef, {
-            joinedAt: Date.now(),
-            userId: newUserId
+        // إضافة المستخدم الجديد تحت المُحيل في الشجرة
+        const userTreeRef = ref(database, `referralTree/${referrerId}/${newUserId}`);
+        await set(userTreeRef, {
+            joinedAt: Date.now()
         });
-        console.log(`تم إضافة المستخدم ${newUserId} إلى فريق ${referrerId}`);
+        console.log(`تم إضافة المستخدم ${newUserId} إلى شجرة إحالة ${referrerId}`);
     } catch (error) {
-        console.error('Error adding to referrer team:', error);
+        console.error('Error adding to referral tree:', error);
         throw error;
     }
-                               }
+                                                      }
