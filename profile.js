@@ -26,7 +26,6 @@ copyReferralBtn.addEventListener('click', () => {
     referralLink.select();
     document.execCommand('copy');
     
-    // تغيير نص الزر مؤقتاً للإشارة إلى نجاح النسخ
     const originalText = copyReferralBtn.innerHTML;
     copyReferralBtn.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
     
@@ -39,12 +38,10 @@ copyReferralBtn.addEventListener('click', () => {
 function checkAuthState() {
     onAuthStateChanged(auth, user => {
         if (!user) {
-            // توجيه إلى صفحة التسجيل إذا لم يكن المستخدم مسجلاً
             window.location.href = 'auth.html';
             return;
         }
         
-        // تحميل بيانات المستخدم الحالي
         loadUserData(user.uid);
     });
 }
@@ -56,7 +53,6 @@ function loadUserData(userId) {
         if (snapshot.exists()) {
             const userData = snapshot.val();
             
-            // عرض بيانات المستخدم
             userName.textContent = userData.name || 'غير محدد';
             userEmail.textContent = userData.email || 'غير محدد';
             userPhone.textContent = userData.phone || 'غير محدد';
@@ -65,19 +61,16 @@ function loadUserData(userId) {
             // تحميل عدد الإحالات الحقيقي من المسار المنفصل
             await loadActualReferralsCount(userId, userData);
             
-            // إنشاء وعرض رابط الإحالة
             if (userData.referralCode) {
                 const currentUrl = window.location.origin + window.location.pathname;
                 const baseUrl = currentUrl.replace('profile.html', 'auth.html');
                 referralLink.value = `${baseUrl}?ref=${userData.referralCode}`;
             }
             
-            // إظهار أيقونة الإدارة إذا كان المستخدم مشرفاً
             if (userData.isAdmin) {
                 adminIcon.style.display = 'flex';
             }
         } else {
-            // بيانات المستخدم غير موجودة
             userName.textContent = 'بيانات غير متاحة';
             userEmail.textContent = 'بيانات غير متاحة';
             userPhone.textContent = 'بيانات غير متاحة';
@@ -87,7 +80,7 @@ function loadUserData(userId) {
     });
 }
 
-// تحميل عدد الإحالات الحقيقي
+// تحميل عدد الإحالات الحقيقي من المسار المنفصل
 async function loadActualReferralsCount(userId, userData) {
     try {
         const referralsRef = ref(database, 'userReferrals/' + userId);
@@ -97,16 +90,14 @@ async function loadActualReferralsCount(userId, userData) {
         if (snapshot.exists()) {
             const referrals = snapshot.val();
             actualCount = Object.keys(referrals).length;
+            
+            // مزامنة العدد مع الحقل في userData إذا كان مختلفًا
+            if (actualCount !== (userData.referralsCount || 0)) {
+                await set(ref(database, 'users/' + userId + '/referralsCount'), actualCount);
+            }
         }
         
-        // عرض العدد الحقيقي
         userReferrals.textContent = actualCount;
-        
-        // إذا كان العدد مختلفاً عن القيمة المخزنة، قم بتحديثها
-        if (actualCount !== (userData.referralsCount || 0)) {
-            await set(ref(database, 'users/' + userId + '/referralsCount'), actualCount);
-            console.log("تم تحديث عداد الإحالات إلى القيمة الصحيحة: ", actualCount);
-        }
     } catch (error) {
         console.error("خطأ في تحميل عدد الإحالات: ", error);
         userReferrals.textContent = userData.referralsCount || 0;
@@ -116,7 +107,6 @@ async function loadActualReferralsCount(userId, userData) {
 // تسجيل الخروج
 logoutBtn.addEventListener('click', () => {
     signOut(auth).then(() => {
-        // توجيه إلى الصفحة الرئيسية بعد تسجيل الخروج
         window.location.href = 'index.html';
     }).catch((error) => {
         console.error('Error signing out:', error);
