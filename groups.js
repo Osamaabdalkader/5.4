@@ -1,135 +1,108 @@
-// groups.js
+// استيراد دوال Firebase
 import { 
-  auth, database, ref, get, onValue,
+  auth, database, 
+  ref, onValue, query, orderByChild, equalTo,
   onAuthStateChanged
 } from './firebase.js';
 
 // عناصر DOM
-const teamMembersCount = document.getElementById('team-members-count');
-const teamReferralLink = document.getElementById('team-referral-link');
-const teamCopyReferralBtn = document.getElementById('team-copy-referral-btn');
-const teamMembersList = document.getElementById('team-members-list');
+const teamCount = document.getElementById('team-count');
+const teamList = document.getElementById('team-list');
+const adminIcon = document.getElementById('admin-icon');
 
 // تحميل بيانات الفريق عند بدء التحميل
 document.addEventListener('DOMContentLoaded', () => {
     checkAuthState();
 });
 
-// التعامل مع نسخ رابط الإحالة
-teamCopyReferralBtn.addEventListener('click', () => {
-    teamReferralLink.select();
-    document.execCommand('copy');
-    
-    const originalText = teamCopyReferralBtn.innerHTML;
-    teamCopyReferralBtn.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
-    
-    setTimeout(() => {
-        teamCopyReferralBtn.innerHTML = originalText;
-    }, 2000);
-});
-
 // التحقق من حالة المصادقة
 function checkAuthState() {
     onAuthStateChanged(auth, user => {
         if (!user) {
+            // توجيه إلى صفحة التسجيل إذا لم يكن المستخدم مسجلاً
             window.location.href = 'auth.html';
             return;
         }
         
-        loadUserData(user.uid);
-        loadTeamMembers(user.uid);
+        // تحميل بيانات الفريق
+        loadTeamData(user.uid);
+        
+        // التحقق إذا كان المستخدم مشرفاً
+        checkAdminStatus(user.uid);
     });
 }
 
-// تحميل بيانات المستخدم
-async function loadUserData(userId) {
-    try {
-        const userRef = ref(database, 'users/' + userId);
-        const snapshot = await get(userRef);
-        
+// تحميل بيانات الفريق
+function loadTeamData(userId) {
+    // البحث عن جميع المستخدمين الذين تمت إحالتهم بواسطة هذا المستخدم
+    const usersRef = ref(database, 'users');
+    const userQuery = query(usersRef, orderByChild('referredBy'), equalTo(userId));
+    
+    onValue(userQuery, (snapshot) => {
         if (snapshot.exists()) {
-            const userData = snapshot.val();
+            const teamMembers = snapshot.val();
+            const memberCount = Object.keys(teamMembers).length;
             
-            // عرض رابط الإحالة
-            if (userData.referralCode) {
-                const currentUrl = window.location.origin + window.location.pathname;
-                const baseUrl = currentUrl.replace('groups.html', 'auth.html');
-                teamReferralLink.value = `${baseUrl}?ref=${userData.referralCode}`;
-            }
+            // تحديث عدد الأعضاء
+            teamCount.textContent = memberCount;
+            
+            // عرض قائمة الأعضاء
+            displayTeamMembers(teamMembers);
+        } else {
+            // لا يوجد أعضاء في الفريق
+            teamCount.textContent = '0';
+            teamList.innerHTML = '<div class="no-members">لا يوجد أعضاء في فريقك بعد</div>';
         }
-    } catch (error) {
-        console.error("خطأ في تحميل بيانات المستخدم:", error);
-    }
-}
-
-// تحميل أعضاء الفريق
-async function loadTeamMembers(userId) {
-    try {
-        const teamRef = ref(database, 'userReferrals/' + userId);
-        onValue(teamRef, (snapshot) => {
-            if (snapshot.exists()) {
-                const members = snapshot.val();
-                const membersCount = Object.keys(members).length;
-                
-                // تحديث عدد الأعضاء
-                teamMembersCount.textContent = membersCount;
-                
-                // عرض قائمة الأعضاء
-                displayTeamMembers(members);
-            } else {
-                // لا يوجد أعضاء
-                teamMembersCount.textContent = '0';
-                teamMembersList.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-users"></i>
-                        <p>لا يوجد أعضاء في فريقك بعد</p>
-                        <p>شارك رابط الإحالة الخاص بك لبدء بناء فريقك</p>
-                    </div>
-                `;
-            }
-        });
-    } catch (error) {
-        console.error("خطأ في تحميل أعضاء الفريق:", error);
-    }
+    });
 }
 
 // عرض أعضاء الفريق
 function displayTeamMembers(members) {
-    teamMembersList.innerHTML = '';
+    teamList.innerHTML = '';
     
-    Object.entries(members).forEach(([memberId, memberData]) => {
-        const memberItem = document.createElement('div');
-        memberItem.className = 'member-item';
+    for (const userId in members) {
+        const member = members[userId];
+        const memberElement = document.createElement('div');
+        memberElement.className = 'team-member';
         
-        const joinDate = new Date(memberData.timestamp).toLocaleDateString('ar-SA');
-        
-        memberItem.innerHTML = `
+        memberElement.innerHTML = `
             <div class="member-info">
-                <div class="member-name">${memberData.referredUserName || 'غير معروف'}</div>
-                <div class="member-email">${memberData.referredUserEmail || 'غير معروف'}</div>
-                <div class="member-date">انضم في: ${joinDate}</div>
+                <div class="member-name">${member.name || 'غير معروف'}</div>
+                <div class="member-details">
+                    <span class="member-email"><i class="fas fa-envelope"></i> ${member.email || 'غير متاح'}</span>
+                    <span class="member-phone"><i class="fas fa-phone"></i> ${member.phone || 'غير متاح'}</span>
+                </div>
             </div>
-            <div class="member-status status-active">نشط</div>
+            <div class="member-join-date">
+                ${formatDate(member.createdAt)}
+            </div>
         `;
         
-        teamMembersList.appendChild(memberItem);
-    });
-}
-
-// إضافة أيقونة الفريق إلى footer في جميع الصفحات
-function addTeamIconToFooter() {
-    const footerIcons = document.querySelector('.footer-icons');
-    if (footerIcons && !document.querySelector('[href="groups.html"]')) {
-        const teamIcon = document.createElement('a');
-        teamIcon.href = 'groups.html';
-        teamIcon.className = 'icon';
-        teamIcon.innerHTML = `
-            <i class="fas fa-users"></i>
-            <span>فريقي</span>
-        `;
-        footerIcons.appendChild(teamIcon);
+        teamList.appendChild(memberElement);
     }
 }
 
-// إضافة أيقونة الفريق عند تحميل الصفحة
-addTeamIconToFooter();
+// تنسيق التاريخ
+function formatDate(timestamp) {
+    if (!timestamp) return 'غير معروف';
+    
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+// التحقق إذا كان المستخدم مشرفاً
+function checkAdminStatus(userId) {
+    const userRef = ref(database, 'users/' + userId);
+    onValue(userRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            if (userData.isAdmin) {
+                adminIcon.style.display = 'flex';
+            }
+        }
+    });
+}
